@@ -24,6 +24,7 @@ TBA CUSIPs: FNM30 30yr FNMA, coupons 3.0–7.0%, 2025 (CTD).
 
 import csv
 import os
+import time
 import requests as rq
 from datetime import date
 from typing import Any, Dict, List, Optional
@@ -389,6 +390,46 @@ def _horizon_prices_from_sync_payload(
     return out
 
 
+def _resolve_scenario_payload(
+    token: str,
+    initial_payload: Dict[str, Any],
+    max_wait_seconds: int = 180,
+    poll_seconds: int = 3,
+) -> Dict[str, Any]:
+    """
+    Return payload containing results/data.
+    If sync scenario-calc responds with requestId only, poll /results/{requestId}.
+    """
+    if not isinstance(initial_payload, dict):
+        return {}
+    if initial_payload.get("results") is not None or initial_payload.get("data") is not None:
+        return initial_payload
+
+    request_id = initial_payload.get("requestId")
+    if not request_id:
+        return initial_payload
+
+    results_url = api_url(f"/results/{request_id}", mode=None)
+    waited = 0
+    while waited <= max_wait_seconds:
+        r = rq.get(results_url, headers=api_headers(token), timeout=30)
+        if r.status_code == 404:
+            time.sleep(poll_seconds)
+            waited += poll_seconds
+            continue
+        if not r.ok:
+            return initial_payload
+        j = r.json()
+        status = (j.get("meta") or {}).get("status")
+        if status == "DONE":
+            return j
+        if j.get("results") is not None or j.get("data") is not None:
+            return j
+        time.sleep(poll_seconds)
+        waited += poll_seconds
+    return initial_payload
+
+
 def _safe(val: Any) -> str:
     if val is None:
         return ""
@@ -400,11 +441,22 @@ def _safe(val: Any) -> str:
 def _horizon_price(h: Any) -> Optional[float]:
     """
     Extract numeric shocked price from a scenario-calc GET response.
-    API may return shocked price at top level or under 'py' (price, economicExposure, pyLevel, marketValue).
+    API may return shocked price at top level or under 'py'.
+    Some contracts return actualPrice/fullPrice instead of price.
     """
     if not isinstance(h, dict):
         return None
-    for key in ("price", "marketValue", "economicExposure", "pyLevel", "value"):
+    for key in (
+        "price",
+        "actualPrice",
+        "fullPrice",
+        "actualFullPrice",
+        "underlyingPrice",
+        "marketValue",
+        "economicExposure",
+        "pyLevel",
+        "value",
+    ):
         v = h.get(key)
         if v is not None:
             try:
@@ -413,7 +465,16 @@ def _horizon_price(h: Any) -> Optional[float]:
                 pass
     py = h.get("py") or {}
     if isinstance(py, dict):
-        for key in ("price", "economicExposure", "pyLevel", "marketValue"):
+        for key in (
+            "price",
+            "actualPrice",
+            "fullPrice",
+            "actualFullPrice",
+            "underlyingPrice",
+            "economicExposure",
+            "pyLevel",
+            "marketValue",
+        ):
             v = py.get(key)
             if v is not None:
                 try:
@@ -473,7 +534,8 @@ def run_scenario_calc(
             prices: Optional[List[Optional[float]]] = None
             if resp.ok:
                 try:
-                    prices = _horizon_prices_from_sync_payload(resp.json(), cusip, len(chunk))
+                    payload = _resolve_scenario_payload(token, resp.json())
+                    prices = _horizon_prices_from_sync_payload(payload, cusip, len(chunk))
                 except (ValueError, TypeError):
                     prices = None
             else:
