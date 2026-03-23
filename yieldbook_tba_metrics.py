@@ -7,29 +7,34 @@ Server: https://api.yieldbook.com/analytics/v2
 Endpoints used:
 - TBA Pricing:     GET /sync/tba-pricing (query: job, name, pri, tags per spec)
 - PY Calculation:  POST /sync/bond/py
-- Scenario Calc:   POST /req/bond/scenario-calc, then GET /results/{requestId}
+- Scenario Calc:   POST or GET /sync/bond/scenario-calc (sync) or
+                   POST /req/bond/scenario-calc then GET /results/{requestId} (async)
 - Scenario setups: GET /sync/ref-data/scenario-setups
 
-- Uses SIFMA Class A for next settlement date (mbs_settlement).
+- Uses SIFMA Class A (mbs_settlement): Yieldbook PROD-{MON} rolls
+  TBA_YB_ROLL_DAYS_BEFORE_CLASS_A days before Class A; settlementDate matches that month.
 - PrevClose from GET /sync/tba-pricing; PY and scenario-calc use that level.
 - Pulls: Forwardyield, Yieldcurrentmargin, OAS, ForwardWAL, LongtermfWDCPR,
   Duration, Convexity, effectiveDuration, Effectiveconvexity.
-- Runs scenario-calc for parallel shocks (bps): -300, -200, -100, -50, -25,
-  -10, -5, +5, +10, +25, +50, +100, +200, +300.
+- Shock scenarios: YBSCEN parallel curve shocks via POST /sync/bond/scenario-calc
+  (horizonPYMethod "OAS Change", scenarioRef /sys/scenario/Par/{bps}?timing=Gradual&...).
 
 TBA CUSIPs: FNM30 30yr FNMA, coupons 3.0–7.0%, 2025 (CTD).
 """
 
 import csv
 import os
-import time
 import requests as rq
 from datetime import date
 from typing import Any, Dict, List, Optional
 
 from mbs_settlement import (
     get_last_business_day_iso,
+    get_latest_class_a_settlement_before,
     get_next_settlement_date,
+    get_yieldbook_tba_contract_month,
+    get_yieldbook_tba_prod_suffix,
+    get_yieldbook_tba_settlement_date,
 )
 
 # -----------------------------------------------------------------------------
@@ -39,7 +44,7 @@ from mbs_settlement import (
 AUTH_URL = "https://www.yieldbook.com/x/oauth/api-token"
 API_BASE_URL = "https://api.yieldbook.com/analytics/v2"
 
-# TBA CUSIPs (FNM30.300.25(CTD) through FNM30.700.25(CTD))
+# TBA CUSIPs (FNM30.300.25(CTD) through FNM30.750.25(CTD))
 TBA_CUSIPS = [
     "FNM30.300.25(CTD)",
     "FNM30.350.25(CTD)",
@@ -50,10 +55,10 @@ TBA_CUSIPS = [
     "FNM30.600.25(CTD)",
     "FNM30.650.25(CTD)",
     "FNM30.700.25(CTD)",
+    "FNM30.750.25(CTD)",
 ]
 
-# Map TBA CUSIP -> Yieldbook security name for price (YBTBAPRICE PrevClose).
-# Settlement 4/13/2026 = April -> FNMAx.x-PROD-APR. Adjust suffix by settle month if needed.
+# Map TBA CUSIP -> Yieldbook coupon prefix for YBTBAPRICE (suffix PROD-{MON} from mbs_settlement).
 TBA_CUSIP_TO_SECURITY_NAME_APR: Dict[str, str] = {
     "FNM30.300.25(CTD)": "FNMA3.0-PROD-APR",
     "FNM30.350.25(CTD)": "FNMA3.5-PROD-APR",
@@ -64,15 +69,29 @@ TBA_CUSIP_TO_SECURITY_NAME_APR: Dict[str, str] = {
     "FNM30.600.25(CTD)": "FNMA6.0-PROD-APR",
     "FNM30.650.25(CTD)": "FNMA6.5-PROD-APR",
     "FNM30.700.25(CTD)": "FNMA7.0-PROD-APR",
+    "FNM30.750.25(CTD)": "FNMA7.5-PROD-APR",
 }
 
 # Parallel yield curve shocks (basis points)
 SHOCKS_BPS = [-300, -200, -100, -50, -25, -10, -5, 5, 10, 25, 50, 100, 200, 300]
+#SHOCKS_BPS = [-200, -50, 50, 200]
+MAX_SCENARIOS_PER_REQUEST = 7  # Yieldbook /sync/bond/scenario-calc limit
 
+# SOFR swap curve (scenario-calc input curveType)
 CURVE_TYPE = "SWAP_RFR"
 PREPAY_RATE = 100
 OUTPUT_CSV = "yieldbook_tba_metrics_results.csv"
+PREPAY_MODEL = "Model"
+# Scenario-calc (YBSCEN): LMMSOFR flat vol per Yieldbook scenario-calc sync payload
+VOLATILITY_TYPE = "LMMSOFRFlat"
 
+# Optional query suffix for YBSCEN Par shift refs (override via env if needed)
+YBSCEN_SCENARIO_QUERY = (
+    os.getenv(
+        "YB_YBSCEN_SCENARIO_QUERY",
+        "timing=Gradual&reinvestmentRate=Default&swapSpreadConst=true",
+    ).strip()
+)
 
 def _load_api_credentials() -> Dict[str, str]:
     api_id = os.getenv("YB_API_ID", "zwang@mtb.com-api")
@@ -114,27 +133,19 @@ def api_headers(token: str) -> Dict[str, str]:
 # YBTBAPRICE PrevClose — security name mapping and price fetch
 # -----------------------------------------------------------------------------
 
-# Settlement month (YYYY-MM) -> suffix for security name (APR, MAY, JUN, ...)
-_SETTLE_MONTH_SUFFIX = {
-    "01": "JAN", "02": "FEB", "03": "MAR", "04": "APR", "05": "MAY", "06": "JUN",
-    "07": "JUL", "08": "AUG", "09": "SEP", "10": "OCT", "11": "NOV", "12": "DEC",
-}
 
-
-def get_security_name_for_tba(cusip: str, settlement_date: str) -> str:
+def get_security_name_for_tba(cusip: str, as_of: date) -> str:
     """
-    Return Yieldbook security name for TBA price (YBTBAPRICE), e.g. FNMA3.0-PROD-APR.
-    For 4/13/2026 settle use APR; for other months use PROD-{MONTH}.
+    Return Yieldbook security name for TBA price (YBTBAPRICE), e.g. FNMA3.0-PROD-MAY.
+
+    PROD-{MON} uses get_yieldbook_tba_prod_suffix(as_of): same month as the next Class A
+    delivery on or after as_of, rolling to the following month when as_of is within
+    TBA_YB_ROLL_DAYS_BEFORE_CLASS_A calendar days of that settle (see mbs_settlement).
     """
     if cusip in TBA_CUSIP_TO_SECURITY_NAME_APR:
-        # If settlement is April, use the APR map as-is
-        if settlement_date.startswith("2026-04") or settlement_date.startswith("2027-04"):
-            return TBA_CUSIP_TO_SECURITY_NAME_APR[cusip]
-        # Other months: derive from coupon and settle month (e.g. FNMA3.0-PROD-MAY)
-        month = settlement_date[5:7] if len(settlement_date) >= 7 else "04"
-        suffix = _SETTLE_MONTH_SUFFIX.get(month, "APR")
-        base = TBA_CUSIP_TO_SECURITY_NAME_APR[cusip].replace("-APR", f"-{suffix}")
-        return base
+        suffix = get_yieldbook_tba_prod_suffix(as_of)
+        prefix = TBA_CUSIP_TO_SECURITY_NAME_APR[cusip].rsplit("-", 1)[0]
+        return f"{prefix}-{suffix}"
     return cusip
 
 
@@ -145,32 +156,19 @@ def get_prevclose_ybtbaprice(
 ) -> Optional[float]:
     """
     Fetch PrevClose via GET /sync/tba-pricing (OpenAPI: TBA Pricing).
-
-    Query params only: job (required), name, pri (-10 to 10), tags.
-    You must have submitted TBA pricing request(s) to a job first; then we GET
-    results by job and name (name = security name e.g. FNMA3.0-PROD-APR).
+    Queries Yieldbook directly by security name (synchonous endpoint).
 
     Env:
-      YB_TBA_PRICING_JOB  (required) Job reference (J-number or job name).
       YB_TBA_PRICING_PRI  (optional) Priority -10 to 10.
       YB_PREVCLOSE_OVERRIDE  (optional) Use this number for all if GET fails.
     """
-    job = os.getenv("YB_TBA_PRICING_JOB", "").strip()
-    if not job:
-        override = os.getenv("YB_PREVCLOSE_OVERRIDE")
-        if override:
-            try:
-                return float(override)
-            except ValueError:
-                pass
-        return None
-
     base_url = api_url("tba-pricing", mode="sync")
     custom = os.getenv("YB_TBAPRICE_ENDPOINT", "").strip()
     if custom and custom.startswith("http"):
         base_url = custom
 
-    params: Dict[str, Any] = {"job": job, "name": security_name}
+    # Query by name directly (synchronous endpoint)
+    params: Dict[str, Any] = {"name": security_name}
     pri = os.getenv("YB_TBA_PRICING_PRI", "").strip()
     if pri:
         try:
@@ -178,24 +176,21 @@ def get_prevclose_ybtbaprice(
         except ValueError:
             pass
 
-    def parse_price(data: Dict[str, Any]) -> Optional[float]:
-        results = data.get("data") or data.get("results") or []
-        if results and isinstance(results[0], dict):
-            r0 = results[0]
-            p = r0.get("price") or r0.get("prevClose") or r0.get("PrevClose") or r0.get("close")
-            if p is not None:
-                return float(p)
-        for key in ("price", "prevClose", "PrevClose", "close"):
-            if isinstance(data.get(key), (int, float)):
-                return float(data[key])
-        return None
-
     try:
         resp = rq.get(base_url, headers=api_headers(token), params=params, timeout=30)
         if resp.status_code == 200:
-            p = parse_price(resp.json())
-            if p is not None:
-                return p
+            data = resp.json()
+            # API returns { "data": { "quotes": [...] }, "meta": {...} }
+            quotes = data.get("data", {}).get("quotes", [])
+            
+            # Find quote matching our security name
+            for quote in quotes:
+                ticker = quote.get("ticker", "")
+                if ticker == security_name or security_name in ticker:
+                    # Use closePrice, lastPrice, or lastAskPrice
+                    price = quote.get("closePrice") or quote.get("lastPrice") or quote.get("lastAskPrice")
+                    if price is not None:
+                        return float(price)
     except Exception:
         pass
 
@@ -287,7 +282,8 @@ def extract_py_metrics(py_obj: Dict[str, Any]) -> Dict[str, Any]:
         lt_fwd_cpr = ppm[0].get("longTerm")
 
     return {
-        "cusip": py.get("cusip") or py_obj.get("userTag"),
+        # Keep the original input identifier for joins with scenario output.
+        "cusip": py_obj.get("userTag") or py.get("cusip"),
         "Forwardyield": fwd.get("yield") or py.get("forwardYield"),
         "Yieldcurrentmargin": py.get("yieldCurveMargin") or py.get("yieldCurrentMargin"),
         "OAS": py.get("oas"),
@@ -302,119 +298,95 @@ def extract_py_metrics(py_obj: Dict[str, Any]) -> Dict[str, Any]:
 
 
 # -----------------------------------------------------------------------------
-# Scenario-calc — parallel shocks
+# Scenario-calc — YBSCEN parallel Par shocks (sync) + OAS Change horizon
 # -----------------------------------------------------------------------------
 
 
-def build_scenarios(curve_shifts_bps: List[int]) -> List[Dict[str, Any]]:
-    scenarios = []
-    for i, shift in enumerate(curve_shifts_bps, start=1):
-        scenarios.append(
-            {
-                "scenarioID": f"scen{i}",
-                "timing": "Gradual",
-                "reinvestmentRate": "default",
-                "definition": {
-                    "userScenario": {
-                        "shiftType": "Par",
-                        "interpolationType": "Years",
-                        "swapSpreadConst": False,
-                        "curveShifts": [{"year": 0.25, "value": shift}],
-                    }
-                },
-            }
-        )
-    return scenarios
+def _ybscen_scenario_ref(bps: int) -> Dict[str, str]:
+    """Yieldbook YBSCEN-style scenario reference for parallel Par shift (bps)."""
+    q = YBSCEN_SCENARIO_QUERY
+    path = f"/sys/scenario/Par/{bps}"
+    if q:
+        ref = f"{path}?{q}"
+    else:
+        ref = path
+    return {"$ref": ref}
 
 
-def run_scenario_calc(
-    token: str,
-    pricing_date: str,
+def _build_ybscen_sync_body(
+    cusip: str,
     settlement_date: str,
-    cusip_to_level: Dict[str, float],
+    level_prevclose: float,
+    shocks_bps: Optional[List[int]] = None,
 ) -> Dict[str, Any]:
-    """POST /req/bond/scenario-calc (OpenAPI: Scenario Calculation), then GET /results/{requestId} until DONE."""
-    endpoint = "/bond/scenario-calc"
-    url = api_url(endpoint, mode="req")
-    scenarios = build_scenarios(SHOCKS_BPS)
-
-    horizon_info = [
-        {
-            "scenarioID": f"scen{i}",
-            "level": 0,
-            "prepay": {"rate": PREPAY_RATE},
-        }
-        for i in range(1, len(SHOCKS_BPS) + 1)
-    ]
-
-    inputs = []
-    for cusip in TBA_CUSIPS:
-        level = cusip_to_level.get(cusip) or 100.0
-        inputs.append(
+    """Single input object for POST /sync/bond/scenario-calc (YBSCEN formula)."""
+    shocks = shocks_bps if shocks_bps is not None else SHOCKS_BPS
+    horizon_info: List[Dict[str, Any]] = []
+    for bps in shocks:
+        horizon_info.append(
             {
-                "userTag": cusip,
-                "identifier": cusip,
-                "idType": "securityIDEntry",
-                "curve": {"curveType": CURVE_TYPE, "currency": "USD"},
-                "settlementInfo": {
-                    "level": level,
-                    "settlementType": "CUSTOM",
-                    "settlementDate": settlement_date,
-                    "prepay": {"type": "Model", "rate": PREPAY_RATE},
-                },
-                "horizonInfo": horizon_info,
-                "assumeCall": False,
-                "horizonPYMethod": "OAS Change",
+                "prepay": {"rate": str(PREPAY_RATE)},
+                "level": "",
+                "scenarioRef": _ybscen_scenario_ref(bps),
             }
         )
-
-    body = {
-        "globalSettings": {
-            "pricingDate": pricing_date,
-            "horizonDays": 30,
+    return {
+        "identifier": cusip,
+        "userTag": cusip,
+        "idType": "securityIDEntry",
+        "horizonInfo": horizon_info,
+        "curve": {"curveType": CURVE_TYPE},
+        "horizonPYMethod": "OAS Change",
+        "settlementInfo": {
+            "settlementType": "CUSTOM",
+            "settlementDate": settlement_date,
+            "prepay": {"rate": str(PREPAY_RATE), "type": PREPAY_MODEL},
+            "level": str(level_prevclose),
         },
-        "scenarios": scenarios,
-        "input": inputs,
+        "volatility": {"type": VOLATILITY_TYPE},
+        "assumeCall": False,
     }
 
-    resp = rq.post(url, headers=api_headers(token), json=body)
-    resp.raise_for_status()
-    data = resp.json()
-    request_id = data.get("requestId")
-    if not request_id:
-        raise RuntimeError(f"No requestId from scenario-calc: {data}")
-    print(f"  requestId: {request_id}, polling for results (up to 10 min)...")
 
-    results_url = api_url(f"/results/{request_id}", mode=None)
-    max_wait = 600  # 10 min for 9 TBAs × 14 scenarios
-    waited = 0
-    interval = 10
-    last_status = None
-    while waited <= max_wait:
-        r = rq.get(results_url, headers=api_headers(token))
-        if r.status_code == 404:
-            if waited % 30 == 0 and waited > 0:
-                print(f"  ... waiting for results ({waited}s)")
-            time.sleep(interval)
-            waited += interval
+def _horizon_prices_from_sync_payload(
+    data: Any,
+    cusip: str,
+    expected_count: int,
+) -> Optional[List[Optional[float]]]:
+    """
+    Parse sync scenario-calc JSON: results[].scenario.horizon[] in request shock order.
+    """
+    if not isinstance(data, dict):
+        return None
+    results = data.get("results") or data.get("data")
+    if results is None:
+        return None
+    if isinstance(results, dict):
+        results = [results]
+    if not isinstance(results, list) or not results:
+        return None
+
+    item = results[0]
+    for r in results:
+        if not isinstance(r, dict):
             continue
-        r.raise_for_status()
-        j = r.json()
-        status = j.get("meta", {}).get("status")
-        if status == "DONE":
-            return j
-        if status != last_status and status:
-            print(f"  status: {status}")
-            last_status = status
-        elif waited > 0 and waited % 30 == 0:
-            print(f"  ... waiting ({waited}s)")
-        time.sleep(interval)
-        waited += interval
-    print(f"Results URL (poll manually): {results_url}")
-    raise RuntimeError(
-        f"Timeout after {max_wait}s waiting for scenario results. "
-        f"RequestId: {request_id}. You can poll the results URL with a valid token."
-    )
+        tag = r.get("userTag") or (r.get("py") or {}).get("cusip") or r.get("identifier")
+        if tag == cusip:
+            item = r
+            break
+
+    scenario = item.get("scenario") or {}
+    horizon = scenario.get("horizon")
+    if not isinstance(horizon, list):
+        return None
+
+    out: List[Optional[float]] = []
+    for i in range(expected_count):
+        if i < len(horizon):
+            out.append(_horizon_price(horizon[i]))
+        else:
+            out.append(None)
+    return out
 
 
 def _safe(val: Any) -> str:
@@ -425,32 +397,113 @@ def _safe(val: Any) -> str:
     return str(val)
 
 
-def extract_scenario_columns(scen_results: Dict[str, Any]) -> Dict[str, Dict[str, str]]:
-    """Parse scenario-calc response: cusip -> { price_bps_XXX: val, ... }."""
-    out: Dict[str, Dict[str, str]] = {}
-    results = scen_results.get("results") or scen_results.get("data") or []
-    for idx, item in enumerate(results):
-        cusip = (
-            item.get("userTag")
-            or item.get("cusip")
-            or (TBA_CUSIPS[idx] if idx < len(TBA_CUSIPS) else str(idx))
-        )
-        row: Dict[str, str] = {}
-        scenario = item.get("scenario") or {}
-        horizon = scenario.get("horizon") or []
-        for i, h in enumerate(horizon):
-            if i >= len(SHOCKS_BPS):
-                break
-            bps = SHOCKS_BPS[i]
+def _horizon_price(h: Any) -> Optional[float]:
+    """
+    Extract numeric shocked price from a scenario-calc GET response.
+    API may return shocked price at top level or under 'py' (price, economicExposure, pyLevel, marketValue).
+    """
+    if not isinstance(h, dict):
+        return None
+    for key in ("price", "marketValue", "economicExposure", "pyLevel", "value"):
+        v = h.get(key)
+        if v is not None:
+            try:
+                return float(v)
+            except (TypeError, ValueError):
+                pass
+    py = h.get("py") or {}
+    if isinstance(py, dict):
+        for key in ("price", "economicExposure", "pyLevel", "marketValue"):
+            v = py.get(key)
+            if v is not None:
+                try:
+                    return float(v)
+                except (TypeError, ValueError):
+                    pass
+    return None
+
+
+def run_scenario_calc(
+    token: str,
+    pricing_date: str,
+    settlement_date: str,
+    py_metrics: List[Dict[str, Any]],
+) -> Dict[str, Dict[str, str]]:
+    """
+    Per TBA: POST https://api.yieldbook.com/analytics/v2/sync/bond/scenario-calc
+    with YBSCEN scenarioRef (/sys/scenario/Par/{bps}?...) and horizonPYMethod
+    "OAS Change". globalSettings: usePreviousClose, horizonDays/Months 0, horizon
+    effective/option measures. Parses results[].scenario.horizon[] for shocked prices.
+    Missing shocks (API error or empty horizon) are left blank.
+    """
+    scenario_by_cusip: Dict[str, Dict[str, str]] = {}
+    url = api_url("/bond/scenario-calc", mode="sync")
+    shock_chunks = [
+        SHOCKS_BPS[i : i + MAX_SCENARIOS_PER_REQUEST]
+        for i in range(0, len(SHOCKS_BPS), MAX_SCENARIOS_PER_REQUEST)
+    ]
+
+    global_settings: Dict[str, Any] = {
+        "usePreviousClose": True,
+        "horizonDays": "0",
+        "horizonMonths": "0",
+        "calcHorizonEffectiveMeasures": True,
+        "calcHorizonOptionMeasures": True,
+        "pricingDate": pricing_date,
+    }
+
+    for m in py_metrics:
+        cusip = m.get("cusip")
+        if not cusip:
+            continue
+        try:
+            base_price = float(m.get("price_last_close"))
+        except (TypeError, ValueError):
+            continue
+
+        row: Dict[str, str] = {f"price_bps_{bps:+d}": "" for bps in SHOCKS_BPS}
+
+        for chunk_idx, chunk in enumerate(shock_chunks, start=1):
+            body = {
+                "input": [_build_ybscen_sync_body(cusip, settlement_date, base_price, chunk)],
+                "globalSettings": global_settings,
+            }
+
+            resp = rq.post(url, headers=api_headers(token), json=body, timeout=120)
+            prices: Optional[List[Optional[float]]] = None
+            if resp.ok:
+                try:
+                    prices = _horizon_prices_from_sync_payload(resp.json(), cusip, len(chunk))
+                except (ValueError, TypeError):
+                    prices = None
+            else:
+                print(
+                    f"scenario-calc sync failed for {cusip}, chunk {chunk}: "
+                    f"{resp.status_code} {resp.text[:500]}"
+                )
+
+            for i, bps in enumerate(chunk):
+                col = f"price_bps_{bps:+d}"
+                shocked: Optional[float] = None
+                if prices is not None and i < len(prices):
+                    shocked = prices[i]
+                if shocked is not None:
+                    row[col] = _safe(shocked)
+
+            if chunk_idx == 1:
+                print(
+                    f"  scenario-calc first chunk finished for {cusip} "
+                    f"({len(chunk)} shocks)"
+                )
+
+        for bps in SHOCKS_BPS:
             col = f"price_bps_{bps:+d}"
-            p = h.get("price") or h.get("actualPrice")
-            if p is not None:
-                row[col] = _safe(p)
-        out[cusip] = row
-    for c in TBA_CUSIPS:
-        if c not in out:
-            out[c] = {}
-    return out
+            if col not in row:
+                row[col] = ""
+
+        scenario_by_cusip[cusip] = row
+
+    return scenario_by_cusip
 
 
 # -----------------------------------------------------------------------------
@@ -461,9 +514,20 @@ def extract_scenario_columns(scen_results: Dict[str, Any]) -> Dict[str, Dict[str
 def main() -> None:
     as_of = date.today()
     pricing_date = get_last_business_day_iso(as_of)
-    settlement_date = get_next_settlement_date(as_of)
+    settlement_date = get_yieldbook_tba_settlement_date(as_of)
+    last_done = get_latest_class_a_settlement_before(as_of)
+    next_any = get_next_settlement_date(as_of)
+    yb_ym = get_yieldbook_tba_contract_month(as_of)
+    yb_mon = get_yieldbook_tba_prod_suffix(as_of)
     print(f"Pricing date (last business day): {pricing_date}")
-    print(f"Settlement date (SIFMA Class A):  {settlement_date}")
+    print(f"As-of (calendar):                 {as_of.isoformat()}")
+    if last_done:
+        print(f"Latest Class A settled (before as-of): {last_done}")
+    print(f"Next Class A on or after as-of:   {next_any}")
+    print(
+        f"Yieldbook contract month:         {yb_ym} (PROD-{yb_mon}); "
+        f"settlementDate for API: {settlement_date}"
+    )
     print(f"TBAs: {len(TBA_CUSIPS)}")
     print(f"Shocks (bps): {SHOCKS_BPS}\n")
 
@@ -471,11 +535,13 @@ def main() -> None:
     token = get_access_token()
     print("Token OK.\n")
 
-    # Resolve TBA -> security name (e.g. FNMA3.0-PROD-APR) and fetch YBTBAPRICE PrevClose
-    print("Fetching YBTBAPRICE PrevClose for each TBA (security name by settle)...")
+    # Resolve TBA -> security name (e.g. FNMA3.0-PROD-MAY after roll) and fetch YBTBAPRICE PrevClose
+    print("Fetching YBTBAPRICE PrevClose for each TBA (security name by contract month)...")
     cusip_to_level: Dict[str, float] = {}
+    cusip_to_security_name: Dict[str, str] = {}
     for cusip in TBA_CUSIPS:
-        sec_name = get_security_name_for_tba(cusip, settlement_date)
+        sec_name = get_security_name_for_tba(cusip, as_of)
+        cusip_to_security_name[cusip] = sec_name
         price = get_prevclose_ybtbaprice(token, sec_name, pricing_date)
         if price is not None:
             cusip_to_level[cusip] = price
@@ -494,19 +560,23 @@ def main() -> None:
         cusip = m.get("cusip")
         if cusip and cusip in cusip_to_level:
             m["price_last_close"] = cusip_to_level[cusip]
+            m["tba_security"] = cusip_to_security_name.get(cusip, "")
         metrics_list.append(m)
     print(f"PY done: {len(metrics_list)} results.\n")
 
-    print("Running scenario-calc (parallel yield curve shocks)...")
-    scen_results = run_scenario_calc(
-        token, pricing_date, settlement_date, cusip_to_level
+    print(
+        f"Running scenario-calc (YBSCEN /sync/bond/scenario-calc, OAS Change, pricing {pricing_date})..."
     )
-    scenario_by_cusip = extract_scenario_columns(scen_results)
+    scenario_by_cusip = run_scenario_calc(
+        token, pricing_date, settlement_date, metrics_list
+    )
     print("Scenario-calc done.\n")
 
     # Merge PY metrics + shock columns
     rows: List[Dict[str, Any]] = []
     py_cols = [
+        "tba_security",
+        "price_last_close",
         "cusip",
         "Forwardyield",
         "Yieldcurrentmargin",
@@ -517,7 +587,6 @@ def main() -> None:
         "Convexity",
         "effectiveDuration",
         "Effectiveconvexity",
-        "price_last_close",
     ]
     shock_cols = [f"price_bps_{bps:+d}" for bps in SHOCKS_BPS]
     all_headers = py_cols + shock_cols
