@@ -26,8 +26,10 @@ import csv
 import os
 import time
 import requests as rq
-from datetime import date
-from typing import Any, Dict, List, Optional
+from threading import Lock
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from datetime import date, datetime
+from typing import Any, Dict, List, Optional, Tuple
 
 from mbs_settlement import (
     get_last_business_day_iso,
@@ -76,7 +78,7 @@ TBA_CUSIP_TO_SECURITY_NAME_APR: Dict[str, str] = {
 # Parallel yield curve shocks (basis points)
 SHOCKS_BPS = [-300, -200, -100, -50, -25, -10, -5, 5, 10, 25, 50, 100, 200, 300]
 #SHOCKS_BPS = [-200, -50, 50, 200]
-MAX_SCENARIOS_PER_REQUEST = 7  # Yieldbook /sync/bond/scenario-calc limit
+MAX_SCENARIOS_PER_REQUEST = 8  # Yieldbook /sync/bond/scenario-calc limit
 
 # SOFR swap curve (scenario-calc input curveType)
 CURVE_TYPE = "SWAP_RFR"
@@ -85,6 +87,59 @@ OUTPUT_CSV = "yieldbook_tba_metrics_results.csv"
 PREPAY_MODEL = "Model"
 # Scenario-calc (YBSCEN): LMMSOFR flat vol per Yieldbook scenario-calc sync payload
 VOLATILITY_TYPE = "LMMSOFRFlat"
+MAX_WORKERS = max(1, int(os.getenv("YB_MAX_WORKERS", "6")))
+_TIMING_SUMMARY: Dict[str, Dict[str, float]] = {}
+_TIMING_LOCK = Lock()
+
+
+def _timed_call_label(label: str, started_at: float) -> None:
+    elapsed = time.perf_counter() - started_at
+    print(f"[timing] {label}: {elapsed:.3f}s")
+    _record_timing(label, elapsed)
+
+
+def _timing_bucket(label: str) -> str:
+    if label.startswith("POST /x/oauth/api-token"):
+        return "POST /x/oauth/api-token"
+    if label.startswith("GET /sync/tba-pricing"):
+        return "GET /sync/tba-pricing"
+    if label.startswith("POST /sync/bond/py retry"):
+        return "POST /sync/bond/py retry"
+    if label.startswith("POST /sync/bond/py"):
+        return "POST /sync/bond/py"
+    if label.startswith("POST /sync/bond/scenario-calc"):
+        return "POST /sync/bond/scenario-calc"
+    if label.startswith("GET /results/"):
+        return "GET /results/{requestId}"
+    return label
+
+
+def _record_timing(label: str, elapsed: float) -> None:
+    bucket = _timing_bucket(label)
+    with _TIMING_LOCK:
+        entry = _TIMING_SUMMARY.get(bucket)
+        if entry is None:
+            _TIMING_SUMMARY[bucket] = {"count": 1.0, "total": elapsed, "max": elapsed}
+            return
+        entry["count"] += 1.0
+        entry["total"] += elapsed
+        entry["max"] = max(entry["max"], elapsed)
+
+
+def _print_timing_summary() -> None:
+    if not _TIMING_SUMMARY:
+        return
+    print("\n[timing] Endpoint summary:")
+    rows: List[Tuple[str, float, float, float]] = []
+    for endpoint, data in _TIMING_SUMMARY.items():
+        count = data.get("count", 0.0)
+        total = data.get("total", 0.0)
+        max_v = data.get("max", 0.0)
+        avg = (total / count) if count else 0.0
+        rows.append((endpoint, count, avg, max_v))
+    rows.sort(key=lambda x: x[0])
+    for endpoint, count, avg, max_v in rows:
+        print(f"[timing]   {endpoint}: count={int(count)}, avg={avg:.3f}s, max={max_v:.3f}s")
 
 # Optional query suffix for YBSCEN Par shift refs (override via env if needed)
 YBSCEN_SCENARIO_QUERY = (
@@ -108,7 +163,9 @@ def get_access_token() -> str:
         "grant_type": "client_credentials",
         "audience": "API2-PROD",
     }
-    resp = rq.post(AUTH_URL, params=auth_config)
+    t0 = time.perf_counter()
+    resp = rq.post(AUTH_URL, params=auth_config, timeout=30)
+    _timed_call_label("POST /x/oauth/api-token", t0)
     resp.raise_for_status()
     token = resp.json().get("accessToken")
     if not token:
@@ -153,11 +210,10 @@ def get_security_name_for_tba(cusip: str, as_of: date) -> str:
 def get_prevclose_ybtbaprice(
     token: str,
     security_name: str,
-    pricing_date: str,
 ) -> Optional[float]:
     """
     Fetch PrevClose via GET /sync/tba-pricing (OpenAPI: TBA Pricing).
-    Queries Yieldbook directly by security name (synchonous endpoint).
+    Queries Yieldbook directly by security name (synchronous endpoint).
 
     Env:
       YB_TBA_PRICING_PRI  (optional) Priority -10 to 10.
@@ -178,7 +234,9 @@ def get_prevclose_ybtbaprice(
             pass
 
     try:
+        t0 = time.perf_counter()
         resp = rq.get(base_url, headers=api_headers(token), params=params, timeout=30)
+        _timed_call_label(f"GET /sync/tba-pricing name={security_name}", t0)
         if resp.status_code == 200:
             data = resp.json()
             # API returns { "data": { "quotes": [...] }, "meta": {...} }
@@ -212,7 +270,6 @@ def get_prevclose_ybtbaprice(
 def run_py_for_tbas(
     token: str,
     pricing_date: str,
-    settlement_date: str,
     cusip_to_level: Dict[str, float],
 ) -> List[Dict[str, Any]]:
     """
@@ -221,9 +278,8 @@ def run_py_for_tbas(
     """
     endpoint = "/bond/py"
     url = api_url(endpoint, mode="sync")
-    results: List[Dict[str, Any]] = []
 
-    for cusip in TBA_CUSIPS:
+    def _run_one(cusip: str) -> Dict[str, Any]:
         level = cusip_to_level.get(cusip) or 100.0
         body = {
             "globalSettings": {
@@ -246,7 +302,9 @@ def run_py_for_tbas(
         # If API supports settlement date in PY input, uncomment:
         # body["input"][0]["settlementDate"] = settlement_date
 
-        resp = rq.post(url, headers=api_headers(token), json=body)
+        t0 = time.perf_counter()
+        resp = rq.post(url, headers=api_headers(token), json=body, timeout=90)
+        _timed_call_label(f"POST /sync/bond/py cusip={cusip}", t0)
         if not resp.ok:
             print(f"PY failed for {cusip}: {resp.status_code} {resp.text[:500]}")
             resp.raise_for_status()
@@ -259,12 +317,27 @@ def run_py_for_tbas(
             "Single volatility is not available"
         ):
             body["input"][0]["volatility"] = {"type": "Default"}
-            resp = rq.post(url, headers=api_headers(token), json=body)
+            t0 = time.perf_counter()
+            resp = rq.post(url, headers=api_headers(token), json=body, timeout=90)
+            _timed_call_label(f"POST /sync/bond/py retry cusip={cusip}", t0)
             resp.raise_for_status()
             data = resp.json()
             res_list = data.get("results") or data.get("data") or []
             res = res_list[0] if res_list else res
-        results.append(res)
+        return res
+
+    by_cusip: Dict[str, Dict[str, Any]] = {}
+    with ThreadPoolExecutor(max_workers=min(MAX_WORKERS, len(TBA_CUSIPS))) as ex:
+        fut_to_cusip = {ex.submit(_run_one, cusip): cusip for cusip in TBA_CUSIPS}
+        for fut in as_completed(fut_to_cusip):
+            cusip = fut_to_cusip[fut]
+            by_cusip[cusip] = fut.result()
+
+    # Preserve stable output order for downstream joins / CSV readability.
+    results: List[Dict[str, Any]] = []
+    for cusip in TBA_CUSIPS:
+        if cusip in by_cusip:
+            results.append(by_cusip[cusip])
     return results
 
 
@@ -394,7 +467,8 @@ def _resolve_scenario_payload(
     token: str,
     initial_payload: Dict[str, Any],
     max_wait_seconds: int = 180,
-    poll_seconds: int = 3,
+    initial_poll_seconds: float = 1.0,
+    max_poll_seconds: float = 4.0,
 ) -> Dict[str, Any]:
     """
     Return payload containing results/data.
@@ -410,12 +484,16 @@ def _resolve_scenario_payload(
         return initial_payload
 
     results_url = api_url(f"/results/{request_id}", mode=None)
-    waited = 0
+    waited = 0.0
+    poll_seconds = max(0.25, initial_poll_seconds)
     while waited <= max_wait_seconds:
+        t0 = time.perf_counter()
         r = rq.get(results_url, headers=api_headers(token), timeout=30)
+        _timed_call_label(f"GET /results/{request_id}", t0)
         if r.status_code == 404:
             time.sleep(poll_seconds)
             waited += poll_seconds
+            poll_seconds = min(max_poll_seconds, poll_seconds * 1.5)
             continue
         if not r.ok:
             return initial_payload
@@ -427,6 +505,7 @@ def _resolve_scenario_payload(
             return j
         time.sleep(poll_seconds)
         waited += poll_seconds
+        poll_seconds = min(max_poll_seconds, poll_seconds * 1.5)
     return initial_payload
 
 
@@ -513,14 +592,14 @@ def run_scenario_calc(
         "pricingDate": pricing_date,
     }
 
-    for m in py_metrics:
+    def _run_for_metric(m: Dict[str, Any]) -> Tuple[str, Dict[str, str]]:
         cusip = m.get("cusip")
         if not cusip:
-            continue
+            return "", {}
         try:
             base_price = float(m.get("price_last_close"))
         except (TypeError, ValueError):
-            continue
+            return "", {}
 
         row: Dict[str, str] = {f"price_bps_{bps:+d}": "" for bps in SHOCKS_BPS}
 
@@ -530,7 +609,12 @@ def run_scenario_calc(
                 "globalSettings": global_settings,
             }
 
+            t0 = time.perf_counter()
             resp = rq.post(url, headers=api_headers(token), json=body, timeout=120)
+            _timed_call_label(
+                f"POST /sync/bond/scenario-calc cusip={cusip} chunk={chunk_idx}",
+                t0,
+            )
             prices: Optional[List[Optional[float]]] = None
             if resp.ok:
                 try:
@@ -563,7 +647,14 @@ def run_scenario_calc(
             if col not in row:
                 row[col] = ""
 
-        scenario_by_cusip[cusip] = row
+        return cusip, row
+
+    with ThreadPoolExecutor(max_workers=min(MAX_WORKERS, len(py_metrics))) as ex:
+        futs = [ex.submit(_run_for_metric, m) for m in py_metrics]
+        for fut in as_completed(futs):
+            cusip, row = fut.result()
+            if cusip:
+                scenario_by_cusip[cusip] = row
 
     return scenario_by_cusip
 
@@ -574,6 +665,9 @@ def run_scenario_calc(
 
 
 def main() -> None:
+    overall_started_at = time.perf_counter()
+    started_wall_clock = datetime.now()
+    print(f"[timing] Process started at: {started_wall_clock.isoformat(timespec='seconds')}")
     as_of = date.today()
     pricing_date = get_last_business_day_iso(as_of)
     settlement_date = get_yieldbook_tba_settlement_date(as_of)
@@ -591,6 +685,7 @@ def main() -> None:
         f"settlementDate for API: {settlement_date}"
     )
     print(f"TBAs: {len(TBA_CUSIPS)}")
+    print(f"Parallel workers: {MAX_WORKERS}")
     print(f"Shocks (bps): {SHOCKS_BPS}\n")
 
     print("Getting access token...")
@@ -601,20 +696,26 @@ def main() -> None:
     print("Fetching YBTBAPRICE PrevClose for each TBA (security name by contract month)...")
     cusip_to_level: Dict[str, float] = {}
     cusip_to_security_name: Dict[str, str] = {}
-    for cusip in TBA_CUSIPS:
+    def _fetch_prevclose(cusip: str) -> Tuple[str, str, Optional[float]]:
         sec_name = get_security_name_for_tba(cusip, as_of)
-        cusip_to_security_name[cusip] = sec_name
-        price = get_prevclose_ybtbaprice(token, sec_name, pricing_date)
-        if price is not None:
-            cusip_to_level[cusip] = price
-            print(f"  {cusip} -> {sec_name}: PrevClose = {price}")
-        else:
-            cusip_to_level[cusip] = 100.0
-            print(f"  {cusip} -> {sec_name}: PrevClose not found, using level=100")
+        price = get_prevclose_ybtbaprice(token, sec_name)
+        return cusip, sec_name, price
+
+    with ThreadPoolExecutor(max_workers=min(MAX_WORKERS, len(TBA_CUSIPS))) as ex:
+        futs = [ex.submit(_fetch_prevclose, cusip) for cusip in TBA_CUSIPS]
+        for fut in as_completed(futs):
+            cusip, sec_name, price = fut.result()
+            cusip_to_security_name[cusip] = sec_name
+            if price is not None:
+                cusip_to_level[cusip] = price
+                print(f"  {cusip} -> {sec_name}: PrevClose = {price}")
+            else:
+                cusip_to_level[cusip] = 100.0
+                print(f"  {cusip} -> {sec_name}: PrevClose not found, using level=100")
     print()
 
     print("Running PY for each TBA (at PrevClose level)...")
-    py_results = run_py_for_tbas(token, pricing_date, settlement_date, cusip_to_level)
+    py_results = run_py_for_tbas(token, pricing_date, cusip_to_level)
     metrics_list: List[Dict[str, Any]] = []
     for res in py_results:
         m = extract_py_metrics(res)
@@ -666,15 +767,23 @@ def main() -> None:
             if h not in r:
                 r[h] = ""
 
-    print("Summary (first row):")
-    print("  " + ", ".join(f"{k}={rows[0].get(k, '')}" for k in py_cols[:5]))
-    print()
+    if rows:
+        print("Summary (first row):")
+        print("  " + ", ".join(f"{k}={rows[0].get(k, '')}" for k in py_cols[:5]))
+        print()
+    else:
+        print("Summary: no rows returned.\n")
 
     with open(OUTPUT_CSV, "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=all_headers, extrasaction="ignore")
         writer.writeheader()
         writer.writerows(rows)
     print(f"Results saved to {OUTPUT_CSV}")
+    ended_wall_clock = datetime.now()
+    total_elapsed = time.perf_counter() - overall_started_at
+    print(f"[timing] Process ended at:   {ended_wall_clock.isoformat(timespec='seconds')}")
+    print(f"[timing] Total runtime:      {total_elapsed:.3f}s")
+    _print_timing_summary()
 
 
 if __name__ == "__main__":
