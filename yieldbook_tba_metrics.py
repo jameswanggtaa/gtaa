@@ -24,6 +24,7 @@ TBA CUSIPs: FNM30 30yr FNMA, coupons 3.0–7.0%, 2025 (CTD).
 
 import csv
 import os
+import re
 import time
 import requests as rq
 from threading import Lock
@@ -78,7 +79,8 @@ TBA_CUSIP_TO_SECURITY_NAME_APR: Dict[str, str] = {
 # Parallel yield curve shocks (basis points)
 SHOCKS_BPS = [-300, -200, -100, -50, -25, -10, -5, 5, 10, 25, 50, 100, 200, 300]
 #SHOCKS_BPS = [-200, -50, 50, 200]
-MAX_SCENARIOS_PER_REQUEST = 8  # Yieldbook /sync/bond/scenario-calc limit
+# Yieldbook now enforces a max of 7 scenarios per request (was previously 8).
+MAX_SCENARIOS_PER_REQUEST = max(1, int(os.getenv("YB_MAX_SCENARIOS_PER_REQUEST", "7")))
 
 # SOFR swap curve (scenario-calc input curveType)
 CURVE_TYPE = "SWAP_RFR"
@@ -92,9 +94,21 @@ _TIMING_SUMMARY: Dict[str, Dict[str, float]] = {}
 _TIMING_LOCK = Lock()
 
 
+def _env_flag(name: str, default: bool) -> bool:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    return str(raw).strip().lower() in {"1", "true", "yes", "y", "on"}
+
+
+# Controls per-request timing printouts (very chatty). Summary is still shown.
+LOG_TIMING_DETAILS = _env_flag("YB_LOG_TIMINGS", False)
+
+
 def _timed_call_label(label: str, started_at: float) -> None:
     elapsed = time.perf_counter() - started_at
-    print(f"[timing] {label}: {elapsed:.3f}s")
+    if LOG_TIMING_DETAILS:
+        print(f"[timing] {label}: {elapsed:.3f}s")
     _record_timing(label, elapsed)
 
 
@@ -509,6 +523,24 @@ def _resolve_scenario_payload(
     return initial_payload
 
 
+def _extract_max_scenarios_from_errors(payload: Dict[str, Any]) -> Optional[int]:
+    """Parse max-scenarios limit from Yieldbook error text when provided."""
+    errs = payload.get("errors")
+    if not isinstance(errs, list):
+        return None
+    for e in errs:
+        if not isinstance(e, dict):
+            continue
+        desc = str(e.get("description") or "")
+        m = re.search(r"Maximum number of scenarios is\s+(\d+)", desc)
+        if m:
+            try:
+                return int(m.group(1))
+            except ValueError:
+                return None
+    return None
+
+
 def _safe(val: Any) -> str:
     if val is None:
         return ""
@@ -619,7 +651,26 @@ def run_scenario_calc(
             if resp.ok:
                 try:
                     payload = _resolve_scenario_payload(token, resp.json())
+                    if isinstance(payload, dict) and payload.get("errors"):
+                        print(
+                            f"scenario-calc returned errors for {cusip}, chunk {chunk}: "
+                            f"{payload.get('errors')}"
+                        )
                     prices = _horizon_prices_from_sync_payload(payload, cusip, len(chunk))
+                    max_allowed = (
+                        _extract_max_scenarios_from_errors(payload)
+                        if isinstance(payload, dict)
+                        else None
+                    )
+                    if (
+                        max_allowed is not None
+                        and len(chunk) > max_allowed
+                        and prices is None
+                    ):
+                        print(
+                            f"scenario-calc chunk too large ({len(chunk)} > {max_allowed}) "
+                            f"for {cusip}; set YB_MAX_SCENARIOS_PER_REQUEST={max_allowed}."
+                        )
                 except (ValueError, TypeError):
                     prices = None
             else:
