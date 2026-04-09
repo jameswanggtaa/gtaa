@@ -1,0 +1,8 @@
+This pythod code will read tba_analysis_input.xlsx and call yieldbook REST API to get the following fields: YB PY function for Forward Yield,	Effective Duration,	Effective Convexity,	Effective DV01,	Dollar Duration, Partial Durations for 
+1YR	2YR	3YR	5YR	10YR	20YR	30YR, use Indic Calcs for Average Life	LT CPR	OAS	Z-Spread	Factor	Life CPR	GWAC	WALA	WALS	MaxServicerName	MaxServicerPercent, use YBScen for: Shock Scenarios											
+-200			-100			+100			+200		
+Eff. Dur	DV01	Dollar Return	Eff. Dur	DV01	Dollar Return	Eff. Dur	DV01	Dollar Return	Eff. Dur	DV01	Dollar Return
+.    
+ 
+, 
+you should get field setup from those columns: Curve_date, Prepayment model, prepay_rate, vol_model, curve_trpe.  if prepayment model is muni,  I like you to use =@YBSW("MUNI","USD",$B$2:$B$14,$E$2:$E$14,"Absolute","") to get the muni curve as Curve date.   I like you to update this python code to see whether it is possible
