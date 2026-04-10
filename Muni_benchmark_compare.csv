@@ -1,0 +1,106 @@
+CUSIP,field,excel,api,delta,status
+000416V38,Forward Yield,3.27,,,api_missing
+000416V38,Effective Duration,6.91,8.910446,2.000446,mismatch
+000416V38,Effective Convexity,-0.64,0.968331,1.608331,mismatch
+000416V38,Effective DV01,0.068,0.088105,0.020105,mismatch
+000416V38,Dollar Duration,396.0,,,api_missing
+000416V38,1YR,-0.01,-0.011300,-0.001300,ok
+000416V38,2YR,-0.01,-0.015200,-0.005200,ok
+000416V38,3YR,0.56,-0.037300,-0.597300,mismatch
+000416V38,5YR,0.93,-0.154700,-1.084700,mismatch
+000416V38,10YR,5.16,8.599100,3.439100,mismatch
+000416V38,20YR,0.28,0.529000,0.249000,mismatch
+000416V38,30YR,0.0,0.000000,0.000000,ok
+000416V38,Average Life,7.1,10.572200,3.472200,mismatch
+000416V38,LT CPR,0.0,,,api_missing
+000416V38,OAS,-94.8,-57.555500,37.244500,mismatch
+000416V38,Z-Spread,-58.0,-57.555521,0.444479,mismatch
+000416V38,Factor,0.0,,,api_missing
+000416V38,Life CPR,0.0,,,api_missing
+000416V38,GWAC,0.0,,,api_missing
+000416V38,WALA,0.0,,,api_missing
+000416V38,WALS,0.0,,,api_missing
+000416V38,MaxServicerName,0.0,,,mismatch
+000416V38,MaxServicerPercent,0.0,,,mismatch
+000416V38,Eff. Dur,3.49,8.938400,5.448400,mismatch
+000416V38,DV01,0.04,0.098552,0.058552,mismatch
+000416V38,Dollar Return,16.65,11.412255,-5.237745,mismatch
+000416V38,Eff. Dur.1,4.29,8.870600,4.580600,mismatch
+000416V38,DV01.1,0.05,0.093326,0.043326,mismatch
+000416V38,Dollar Return.1,12.36,6.363803,-5.996197,mismatch
+000416V38,Eff. Dur.2,7.0,8.676100,1.676100,mismatch
+000416V38,DV01.2,0.07,0.080185,0.010185,mismatch
+000416V38,Dollar Return.2,0.24,-6.424754,-6.664754,mismatch
+000416V38,Eff. Dur.3,7.65,8.556000,0.906000,mismatch
+000416V38,DV01.3,0.07,0.073244,0.003244,ok
+000416V38,Dollar Return.3,-6.8,-13.239909,-6.439909,mismatch
+005104HJ6,Forward Yield,3.5,,,api_missing
+005104HJ6,Effective Duration,0.54,0.074179,-0.465821,mismatch
+005104HJ6,Effective Convexity,-2.18,-1.035360,1.144640,mismatch
+005104HJ6,Effective DV01,0.005,0.000753,-0.004247,ok
+005104HJ6,Dollar Duration,51.0,,,api_missing
+005104HJ6,1YR,0.13,,,api_missing
+005104HJ6,2YR,0.02,,,api_missing
+005104HJ6,3YR,0.02,,,api_missing
+005104HJ6,5YR,0.14,,,api_missing
+005104HJ6,10YR,0.12,,,api_missing
+005104HJ6,20YR,0.0,,,api_missing
+005104HJ6,30YR,0.0,,,api_missing
+005104HJ6,Average Life,0.3,0.072200,-0.227800,mismatch
+005104HJ6,LT CPR,0.0,,,api_missing
+005104HJ6,OAS,-133.4,-61.590300,71.809700,mismatch
+005104HJ6,Z-Spread,-58.0,-61.590333,-3.590333,mismatch
+005104HJ6,Factor,0.0,,,api_missing
+005104HJ6,Life CPR,0.0,,,api_missing
+005104HJ6,GWAC,0.0,,,api_missing
+005104HJ6,WALA,0.0,,,api_missing
+005104HJ6,WALS,0.0,,,api_missing
+005104HJ6,MaxServicerName,0.0,,,mismatch
+005104HJ6,MaxServicerPercent,0.0,,,mismatch
+005104HJ6,Eff. Dur,0.08,6.448300,6.368300,mismatch
+005104HJ6,DV01,0.0,0.065781,0.065781,mismatch
+005104HJ6,Dollar Return,0.37,0.533352,0.163352,mismatch
+005104HJ6,Eff. Dur.1,0.09,6.447300,6.357300,mismatch
+005104HJ6,DV01.1,0.0,0.065713,0.065713,mismatch
+005104HJ6,Dollar Return.1,0.28,0.443654,0.163654,mismatch
+005104HJ6,Eff. Dur.2,0.32,6.412000,6.092000,mismatch
+005104HJ6,DV01.2,0.0,0.063451,0.063451,mismatch
+005104HJ6,Dollar Return.2,0.08,-2.523771,-2.603771,mismatch
+005104HJ6,Eff. Dur.3,3.67,6.355100,2.685100,mismatch
+005104HJ6,DV01.3,0.04,0.059993,0.019993,mismatch
+005104HJ6,Dollar Return.3,-1.82,-7.078473,-5.258473,mismatch
+0054823B8,Forward Yield,4.59,,,api_missing
+0054823B8,Effective Duration,1.13,0.880017,-0.249983,mismatch
+0054823B8,Effective Convexity,-0.52,0.015740,0.535740,mismatch
+0054823B8,Effective DV01,0.012,0.009028,-0.002972,ok
+0054823B8,Dollar Duration,348.0,,,api_missing
+0054823B8,1YR,0.82,0.880000,0.060000,mismatch
+0054823B8,2YR,0.06,0.000000,-0.060000,mismatch
+0054823B8,3YR,0.05,0.000000,-0.050000,mismatch
+0054823B8,5YR,0.19,0.000000,-0.190000,mismatch
+0054823B8,10YR,0.04,0.000000,-0.040000,mismatch
+0054823B8,20YR,0.0,0.000000,0.000000,ok
+0054823B8,30YR,0.0,0.000000,0.000000,ok
+0054823B8,Average Life,1.1,0.905600,-0.194400,mismatch
+0054823B8,LT CPR,0.0,,,api_missing
+0054823B8,OAS,-89.4,-85.435500,3.964500,mismatch
+0054823B8,Z-Spread,-82.0,-85.435463,-3.435463,mismatch
+0054823B8,Factor,0.0,,,api_missing
+0054823B8,Life CPR,0.0,,,api_missing
+0054823B8,GWAC,0.0,,,api_missing
+0054823B8,WALA,0.0,,,api_missing
+0054823B8,WALS,0.0,,,api_missing
+0054823B8,MaxServicerName,0.0,,,mismatch
+0054823B8,MaxServicerPercent,0.0,,,mismatch
+0054823B8,Eff. Dur,0.89,4.999500,4.109500,mismatch
+0054823B8,DV01,0.01,0.052226,0.042226,mismatch
+0054823B8,Dollar Return,3.3,1.924322,-1.375678,mismatch
+0054823B8,Eff. Dur.1,0.91,4.991800,4.081800,mismatch
+0054823B8,DV01.1,0.01,0.051718,0.041718,mismatch
+0054823B8,Dollar Return.1,2.34,1.067298,-1.272702,mismatch
+0054823B8,Eff. Dur.2,1.02,4.973500,3.953500,mismatch
+0054823B8,DV01.2,0.01,0.050534,0.040534,mismatch
+0054823B8,Dollar Return.2,0.43,-0.931878,-1.361878,mismatch
+0054823B8,Eff. Dur.3,1.83,4.953200,3.123200,mismatch
+0054823B8,DV01.3,0.02,0.049250,0.029250,mismatch
+0054823B8,Dollar Return.3,-0.94,-3.106773,-2.166773,mismatch
