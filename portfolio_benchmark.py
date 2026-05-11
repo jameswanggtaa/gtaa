@@ -36,6 +36,11 @@ class BenchmarkRunConfig:
     pandas_header: int = 0
     limit_env: str = "PORTFOLIO_BENCHMARK_LIMIT"
     export_csv: Optional[str] = None
+    # Optional: align API prepay with another book (e.g. Agency MBS 30yr uses Model2501 + 100).
+    force_prepay_model: Optional[Any] = None
+    force_prepay_rate: Optional[float] = None
+    # Optional: process only the first N securities after load (before limit_env).
+    securities_head: Optional[int] = None
 
 
 def load_portfolio_securities(df: pd.DataFrame) -> List[Dict[str, Any]]:
@@ -130,6 +135,19 @@ def run_benchmark(cfg: BenchmarkRunConfig) -> None:
         for s in securities:
             if str(s.get("prepay_model", "")).strip().lower() == "muni":
                 s["muni_curve_points"] = muni_pts
+
+    if cfg.force_prepay_model is not None:
+        for s in securities:
+            if not nsa.sub_type_is_treasury(s.get("sub_type")):
+                s["prepay_model"] = cfg.force_prepay_model
+    if cfg.force_prepay_rate is not None:
+        for s in securities:
+            if not nsa.sub_type_is_treasury(s.get("sub_type")):
+                s["prepay_rate"] = float(cfg.force_prepay_rate)
+
+    if cfg.securities_head is not None and cfg.securities_head > 0:
+        securities = securities[: cfg.securities_head]
+        print(f"[INFO] securities_head={cfg.securities_head}: using first {len(securities)} security row(s).")
 
     limit_raw = (os.environ.get(cfg.limit_env) or "").strip()
     if limit_raw:
