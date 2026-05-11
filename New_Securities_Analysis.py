@@ -35,7 +35,7 @@ def parallel_worker_count() -> int:
     Set YB_WORKERS or YB_PARALLEL_WORKERS (default 1 = sequential).
     Use a modest value (e.g. 4–8); the API may rate-limit heavy parallelism.
     """
-    raw = (os.environ.get("YB_WORKERS") or os.environ.get("YB_PARALLEL_WORKERS") or "1").strip()
+    raw = (os.environ.get("YB_WORKERS") or os.environ.get("YB_PARALLEL_WORKERS") or "16").strip()
     try:
         n = int(raw)
         return max(1, min(n, 32))
@@ -66,6 +66,74 @@ def api_url(endpoint: str, mode: str | None = None) -> str:
 
 
 SHOCKS_BPS = [-200, -100, 100, 200]
+SCENARIO_TIMING = "Immediate"
+SCENARIO_SHIFT_TYPE = "Par"
+SCENARIO_INTERPOLATION_TYPE = "Years"
+SCENARIO_HORIZON_PY_METHOD = "OAS Change"
+SCENARIO_HORIZON_DAYS = 0
+SCENARIO_HORIZON_MONTHS = 0
+
+
+def scenario_horizon_py_method() -> str:
+    """
+    Horizon repricing method for /bond/scenario-calc (e.g. OAS Change, Spread Change).
+    Override with env YB_SCENARIO_HORIZON_PY_METHOD to match Excel/YBSCEN workbook defaults.
+    """
+    v = (os.environ.get("YB_SCENARIO_HORIZON_PY_METHOD") or "").strip()
+    return v if v else SCENARIO_HORIZON_PY_METHOD
+
+
+def scenario_timing() -> str:
+    """Scenario curve shift timing (e.g. Immediate, Gradual). Override: YB_SCENARIO_TIMING."""
+    v = (os.environ.get("YB_SCENARIO_TIMING") or "").strip()
+    return v if v else SCENARIO_TIMING
+
+
+def normalize_scenario_horizon(horizon: Any) -> List[Dict[str, Any]]:
+    """
+    Reorder scenario horizon entries to scen1..scenN matching SHOCKS_BPS when scenarioIDs exist.
+    Avoids mis-mapping EffDur columns if the API returns horizons out of order.
+    """
+    if not isinstance(horizon, list):
+        return []
+    rows = [h for h in horizon if isinstance(h, dict)]
+    if not rows:
+        return []
+    by_id = {
+        str(h["scenarioID"]): h
+        for h in rows
+        if h.get("scenarioID") is not None and str(h.get("scenarioID")).strip() != ""
+    }
+    expected = [f"scen{i}" for i in range(1, len(SHOCKS_BPS) + 1)]
+    if all(sid in by_id for sid in expected):
+        return [by_id[sid] for sid in expected]
+    return rows
+
+
+# Keys for scenario horizon effective duration (Yield Book often populates `duration` only).
+SCENARIO_EFFDUR_KEYS = (
+    "effectiveDurationAtHorizon",
+    "fundedEffectiveDurationAtHorizon",
+    "fundedEffectiveDuration",
+    "effectiveDuration",
+    "durationAtHorizon",
+    "duration",
+)
+MUNI_YBCURVE_TENORS = [
+    ("CURRENT", 0.0),
+    ("1M", 1.0 / 12.0),
+    ("3M", 3.0 / 12.0),
+    ("6M", 6.0 / 12.0),
+    ("1Y", 1.0),
+    ("2Y", 2.0),
+    ("3Y", 3.0),
+    ("4Y", 4.0),
+    ("5Y", 5.0),
+    ("7Y", 7.0),
+    ("10Y", 10.0),
+    ("20Y", 20.0),
+    ("30Y", 30.0),
+]
 
 OUTPUT_COLUMNS = [
     "CUSIP",
@@ -201,10 +269,9 @@ def curve_type(val: Any, prepay_model: Any) -> str:
     """
     REST curveType string for Yield Book (maps file labels like RFRSwap to API enums).
 
-    For prepay model Muni, Excel uses YBSW(\"MUNI\",\"USD\",...); the REST schema only
-    accepts certain enums (e.g. SWAP_RFR). A trial of curveType MUNI returned HTTP 400
-    \"Invalid value for field 'curveType'\". Default Munis to SWAP_RFR; set env
-    YB_MUNI_CURVE_TYPE if LSEG documents a valid muni-specific value for your tenant.
+    For prepay model Muni, default to SWAP_RFR because many tenants reject
+    municipal enum labels in REST curveType validation.
+    Override with YB_MUNI_CURVE_TYPE if your tenant supports a municipal enum.
     """
     if str(prepay_model).strip().lower() == "muni":
         ct = (os.environ.get("YB_MUNI_CURVE_TYPE") or "SWAP_RFR").strip()
@@ -229,7 +296,128 @@ def curve_dict_for(sec: Dict[str, Any]) -> Dict[str, Any]:
     wiring once the schema is known.
     """
     ct = curve_type(sec.get("curve_type"), sec.get("prepay_model"))
-    return {"curveType": ct, "currency": "USD"}
+    curve_obj: Dict[str, Any] = {"curveType": ct, "currency": "USD"}
+
+    # Optional: attach YBSW-style muni tenor/rate points into curve object.
+    # This is tenant/schema dependent; keep behind an env flag.
+    is_muni = str(sec.get("prepay_model", "")).strip().lower() == "muni"
+    use_custom_raw = (os.environ.get("YB_MUNI_INCLUDE_CURVE_POINTS") or "1").strip().lower()
+    use_custom = use_custom_raw in {"1", "true", "yes", "y"}
+    if is_muni and use_custom:
+        pts_raw = sec.get("muni_curve_points") or []
+        pts = []
+        for p in pts_raw:
+            if not isinstance(p, dict):
+                continue
+            y = parse_number(p.get("year"))
+            r = parse_number(p.get("rate"))
+            if y is None or r is None:
+                continue
+            pts.append({"year": float(y), "rate": float(r)})
+
+        if pts:
+            # Field names are configurable because contracts may use different schemas.
+            # Examples to try:
+            #   YB_MUNI_CURVE_POINTS_KEYS=curveSpots,userCurveSpots
+            #   YB_MUNI_CURVE_YEAR_KEY=year
+            #   YB_MUNI_CURVE_RATE_KEY=value
+            keys_raw = (os.environ.get("YB_MUNI_CURVE_POINTS_KEYS") or "curveSpots").strip()
+            keys = [k.strip() for k in keys_raw.split(",") if k.strip()]
+            year_key = (os.environ.get("YB_MUNI_CURVE_YEAR_KEY") or "year").strip()
+            rate_key = (os.environ.get("YB_MUNI_CURVE_RATE_KEY") or "rate").strip()
+            mapped_pts = [{year_key: p["year"], rate_key: p["rate"]} for p in pts]
+            for k in keys:
+                curve_obj[k] = mapped_pts
+
+    return curve_obj
+
+
+def _extract_curve_points_from_obj(obj: Any) -> List[Dict[str, float]]:
+    """Best-effort parser for curve point arrays in unknown tenant response shapes."""
+    out: List[Dict[str, float]] = []
+    if not isinstance(obj, list):
+        return out
+    for item in obj:
+        if not isinstance(item, dict):
+            continue
+        y = parse_number(get_first_key(item, "year", "tenorYear", "tenor", "maturity", "x"))
+        r = parse_number(get_first_key(item, "rate", "value", "spot", "parRate", "y"))
+        if y is None or r is None:
+            continue
+        out.append({"year": float(y), "rate": float(r)})
+    return out
+
+
+def fetch_muni_curve_points_from_ybcurve(session, token: str, sec: Dict[str, Any]) -> List[Dict[str, float]]:
+    """
+    Try to pull YBCURVE tenor/rate points from keyword PY request.
+    If unavailable for the tenant/schema, return [].
+    """
+    pricing_date = sec.get("curve_date") or default_pricing_date()
+    body = {
+        "keywords": ["YBCURVE"],
+        "globalSettings": {"pricingDate": pricing_date},
+        "pyCalcInputs": [{
+            "identifier": sec["cusip"],
+            "idType": "securityIDEntry",
+            "level": str(sec["market_price"]),
+            "settlementDate": pricing_date,
+            "curve": {"curveType": "SWAP_RFR", "currency": "USD"},
+            "prepaySettings": {"type": "Model", "rate": sec.get("prepay_rate") or 100.0},
+            "volatility": {"type": "MatrixWSkew"},
+        }],
+    }
+    r = session.post(api_url("bond/py", mode="req"), json=body, headers=api_headers(token), timeout=60)
+    if not r.ok:
+        return []
+    request_id = r.json().get("requestId")
+    if not request_id:
+        return []
+
+    results_url = api_url(f"/results/{request_id}", mode=None)
+    for _ in range(20):
+        rr = session.get(results_url, headers=api_headers(token), timeout=30)
+        if rr.status_code == 404:
+            time.sleep(1)
+            continue
+        if not rr.ok:
+            return []
+        jr = rr.json()
+        if jr.get("meta", {}).get("status") == "DONE":
+            py_kw = (jr.get("results") or [{}])[0].get("py", {}) or {}
+            if not isinstance(py_kw, dict):
+                return []
+            for k, v in py_kw.items():
+                ku = str(k).lower()
+                if "ybcurve" in ku or ("curve" in ku and isinstance(v, list)):
+                    pts = _extract_curve_points_from_obj(v)
+                    if pts:
+                        return pts
+            return []
+        time.sleep(1)
+    return []
+
+
+def resolve_muni_curve_points(session, token: str, sec: Dict[str, Any]) -> List[Dict[str, float]]:
+    """
+    Resolve Muni curve points in priority order:
+    1) Existing concrete points on sec
+    2) YBCURVE keyword pull (tenant-dependent)
+    3) []
+    """
+    pts_raw = sec.get("muni_curve_points") or []
+    concrete: List[Dict[str, float]] = []
+    for p in pts_raw:
+        if not isinstance(p, dict):
+            continue
+        y = parse_number(p.get("year"))
+        r = parse_number(p.get("rate"))
+        if y is None or r is None:
+            continue
+        concrete.append({"year": float(y), "rate": float(r)})
+    if concrete:
+        return concrete
+    return fetch_muni_curve_points_from_ybcurve(session, token, sec)
 
 
 def sub_type_uses_bond_yield(sub_type: Optional[str]) -> bool:
@@ -252,34 +440,55 @@ def sub_type_is_treasury(sub_type: Optional[str]) -> bool:
 
 def resolve_forward_yield_column(py: Dict[str, Any], sub_type: Optional[str]) -> Any:
     """
-    OUTPUT column Forward_Yield: for Muni/Treasury use bond yield (py.yield / effectiveYield);
-    otherwise use forward yield (forwardMeasures.yield).
+    OUTPUT column Forward_Yield mapping rule:
+    - Muni/Treasury: use bond yield (py.yield / effectiveYield)
+    - All others (Agency MBS/CMO/etc.): use forward yield (forwardMeasures.yield)
     """
     fy = py.get("forwardYield")
-    y = py.get("bondYield")
+    if fy is None:
+        fwd_measures = py.get("forwardMeasures") or {}
+        if isinstance(fwd_measures, dict):
+            fy = get_first_key(fwd_measures, "yield", "Yield")
+    y = get_first_key(py, "bondYield", "yield", "effectiveYield", "streetYield", "Yield")
     if sub_type_uses_bond_yield(sub_type):
-        if y is not None:
-            return y
-        return fy
-    if fy is not None:
-        return fy
-    return y
+        return y
+    # For non-Muni/Treasury, prefer forward yield; fallback to other yield fields if missing.
+    return fy if fy is not None else y
+
+
+def resolve_volatility(sec: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Build volatility payload aligned to product conventions.
+    For Muni, Excel-style runs commonly use MatrixWSkew when input shows Single.
+    """
+    if sub_type_is_treasury(sec.get("sub_type")):
+        return {"type": "Default"}
+
+    vol_raw = sec.get("vol_model")
+    vol_model = (str(vol_raw).strip() if vol_raw is not None else "") or "Default"
+    is_muni = str(sec.get("prepay_model", "")).strip().lower() == "muni"
+    vol_upper = vol_model.upper()
+
+    if is_muni and vol_upper == "SINGLE":
+        return {"type": "MatrixWSkew"}
+    if vol_upper == "SINGLE":
+        return {"type": "Single", "rate": 0}
+    return {"type": vol_model}
 
 
 def computed_dollar_duration(sec: Dict[str, Any], py: Dict[str, Any]) -> Any:
     """
     Dollar_Duration = current_factor * Nominal * effectiveDV01 / 100
     current_factor defaults to 1 when not in input; Nominal from input column.
-    Falls back to API dollarDuration when Nominal is missing.
+    Uses formula-only output (no API dollarDuration fallback).
     """
-    api_dd = py.get("dollarDuration")
     dv01 = py.get("effectiveDV01")
     if dv01 is None:
-        return api_dd
+        return None
     try:
         dv01_f = float(dv01)
     except (TypeError, ValueError):
-        return api_dd
+        return None
 
     cf_raw = sec.get("current_factor")
     if cf_raw is None:
@@ -292,11 +501,11 @@ def computed_dollar_duration(sec: Dict[str, Any], py: Dict[str, Any]) -> Any:
 
     nom = sec.get("nominal")
     if nom is None:
-        return api_dd
+        return None
     try:
         nom_f = float(nom)
     except (TypeError, ValueError):
-        return api_dd
+        return None
 
     return cf * nom_f * dv01_f / 100.0
 
@@ -356,6 +565,101 @@ def clean_text(val: Any) -> Optional[str]:
     return s or None
 
 
+def get_first_key(d: Dict[str, Any], *names: str) -> Any:
+    """
+    Return the first non-None value from candidate keys, case-insensitive.
+    """
+    if not isinstance(d, dict) or not d:
+        return None
+    lower_map = {str(k).lower(): v for k, v in d.items()}
+    for name in names:
+        if name in d and d.get(name) is not None:
+            return d.get(name)
+        v = lower_map.get(str(name).lower())
+        if v is not None:
+            return v
+    return None
+
+
+def extract_pphist_cpr_life(payload: Dict[str, Any]) -> Any:
+    """
+    Extract Life CPR from either flat keys or nested PPM history list shape:
+    dataPPMHistoryList -> prepayType=CPR -> dataPPMHistoryDetailList -> month=Life.
+    """
+    direct = get_first_key(payload, "ppHistCPRLife", "PPHistCPRLife", "lifeCPR", "LifeCPR")
+    if direct is not None:
+        return direct
+
+    history_list = get_first_key(payload, "dataPPMHistoryList", "datappmhistorylist")
+    if not isinstance(history_list, list):
+        return None
+
+    for block in history_list:
+        if not isinstance(block, dict):
+            continue
+        prepay_type = str(get_first_key(block, "prepayType", "prepaytype") or "").strip().upper()
+        if prepay_type != "CPR":
+            continue
+        details = get_first_key(block, "dataPPMHistoryDetailList", "datappmhistorydetaillist")
+        if not isinstance(details, list):
+            continue
+        for item in details:
+            if not isinstance(item, dict):
+                continue
+            month = str(get_first_key(item, "month", "Month") or "").strip().upper()
+            if month == "LIFE":
+                return get_first_key(item, "prepayRate", "prepayrate", "rate", "value")
+    return None
+
+
+def extract_long_term_cpr(payload: Dict[str, Any]) -> Any:
+    """
+    Extract LongTerm CPR from either flat keys or nested projection list shape:
+    dataPpmProjList -> prepayType=CPR -> longTerm.
+    """
+    direct = get_first_key(payload, "longTermCPR", "LongTermCPR", "ltCPR", "LTCPR")
+    if direct is not None:
+        return direct
+
+    proj_list = get_first_key(payload, "dataPpmProjList", "dataPPMProjList", "datappmprojlist")
+    if not isinstance(proj_list, list):
+        return None
+
+    for block in proj_list:
+        if not isinstance(block, dict):
+            continue
+        prepay_type = str(get_first_key(block, "prepayType", "prepaytype") or "").strip().upper()
+        if prepay_type != "CPR":
+            continue
+        return get_first_key(block, "longTerm", "longterm", "lt", "value")
+    return None
+
+
+def resolve_life_cpr_value(sub_type: Optional[str], py: Dict[str, Any], indic: Dict[str, Any]) -> Any:
+    """
+    Life CPR selection:
+    1) PY Life CPR
+    2) INDIC Life CPR
+    3) For CMO-style sectors, fallback to CPR long-term projection as proxy
+    """
+    py_life = py.get("PPHistCPRLife")
+    if py_life is not None:
+        return py_life
+    indic_life = indic.get("PPHistCPRLife")
+    if indic_life is not None:
+        return indic_life
+
+    st = (sub_type or "").strip().upper()
+    if "CMO" in st:
+        py_lt = py.get("LongTermCPR")
+        if py_lt is not None:
+            return py_lt
+        indic_lt = indic.get("LongTermCPR")
+        if indic_lt is not None:
+            return indic_lt
+    return None
+
+
 def default_pricing_date() -> str:
     return date.today().strftime("%Y-%m-%d")
 
@@ -386,18 +690,50 @@ def read_muni_curve_points(input_file: str) -> List[Dict[str, float]]:
     return read_muni_spot_curve_sidecar(input_file)
 
 
+def default_muni_ybcurve_points() -> List[Dict[str, Any]]:
+    """
+    YBCURVE tenor skeleton:
+    current, 1m, 3m, 6m, 1y, 2y, 3y, 4y, 5y, 7y, 10y, 20y, 30y.
+    """
+    return [{"tenor": t, "year": y, "rate": None} for t, y in MUNI_YBCURVE_TENORS]
+
+
 def read_muni_spot_curve_sidecar(input_file: str) -> List[Dict[str, float]]:
     """
     Optional CSV alongside the portfolio file (same directory as input_file):
 
+      muni_ybcurve.csv     (or Muni_ybcurve.csv)
       muni_ybsw_curve.csv  (or Muni_ybsw_curve.csv)
 
-    Columns (case-insensitive): year or tenor | rate or spot or yield
-    Export the evaluated YBSW(MUNI,USD,...) curve from Excel into this file so CSV-only
-    pipelines carry the same discount inputs as the add-in (for logging / future REST).
+    Columns (case-insensitive): year or tenor | rate or parrate or spot or yield
+    Accepts YBCURVE-style tenor labels:
+      current, 1m, 3m, 6m, 1y, 2y, 3y, 4y, 5y, 7y, 10y, 20y, 30y
     """
+    tenor_years = {k.lower(): v for k, v in MUNI_YBCURVE_TENORS}
+
+    def _parse_tenor_to_years(raw: Any) -> Optional[float]:
+        if raw is None or pd.isna(raw):
+            return None
+        s = str(raw).strip().lower().replace(" ", "")
+        if not s:
+            return None
+        if s in tenor_years:
+            return float(tenor_years[s])
+        if s.endswith("month"):
+            s = s.replace("month", "m")
+        if s.endswith("months"):
+            s = s.replace("months", "m")
+        if s.endswith("year"):
+            s = s.replace("year", "y")
+        if s.endswith("years"):
+            s = s.replace("years", "y")
+        if s in tenor_years:
+            return float(tenor_years[s])
+        parsed_num = parse_number(s)
+        return float(parsed_num) if parsed_num is not None else None
+
     d = os.path.dirname(os.path.abspath(input_file))
-    for name in ("muni_ybsw_curve.csv", "Muni_ybsw_curve.csv"):
+    for name in ("muni_ybcurve.csv", "Muni_ybcurve.csv", "muni_ybsw_curve.csv", "Muni_ybsw_curve.csv"):
         p = os.path.join(d, name)
         if not os.path.isfile(p):
             continue
@@ -405,12 +741,12 @@ def read_muni_spot_curve_sidecar(input_file: str) -> List[Dict[str, float]]:
             df = pd.read_csv(p)
             cols = col_lookup(df)
             ycol = find_col(cols, "year", "tenor", "maturity", "maturityyears", "term")
-            rcol = find_col(cols, "rate", "spot", "yield", "par", "zero")
+            rcol = find_col(cols, "parrate", "rate", "spot", "yield", "par", "zero")
             if not ycol or not rcol:
                 continue
             out: List[Dict[str, float]] = []
             for _, row in df.iterrows():
-                yv = parse_number(row[ycol])
+                yv = _parse_tenor_to_years(row[ycol])
                 rv = parse_number(row[rcol])
                 if yv is None or rv is None:
                     continue
@@ -463,6 +799,8 @@ def load_securities() -> List[Dict[str, Any]]:
         raise ValueError(f"Missing required column(s): {missing}. Found columns: {list(df.columns)}")
 
     muni_curve_points = read_muni_curve_points(input_file)
+    if not muni_curve_points:
+        muni_curve_points = default_muni_ybcurve_points()
     out = []
 
     for _, r in df.iterrows():
@@ -505,13 +843,12 @@ def run_py(session, token: str, sec: Dict[str, Any]) -> Dict[str, Any]:
         prepay_rate = 100.0
 
     pricing_date = sec.get("curve_date") or default_pricing_date()
+    if str(sec.get("prepay_model", "")).strip().lower() == "muni":
+        sec["muni_curve_points"] = resolve_muni_curve_points(session, token, sec)
     curve_obj = curve_dict_for(sec)
 
     prepay_type = normalize_prepay_type(sec.get("prepay_model"))
-    vol_raw = sec.get("vol_model")
-    vol_model = (str(vol_raw).strip() or "Default") if vol_raw is not None else "Default"
-    if sub_type_is_treasury(sec.get("sub_type")):
-        vol_model = "Default"
+    volatility = resolve_volatility(sec)
 
     payload = {
         "globalSettings": {
@@ -522,10 +859,11 @@ def run_py(session, token: str, sec: Dict[str, Any]) -> Dict[str, Any]:
             "identifier": sec["cusip"],
             "idType": "securityIDEntry",
             "level": str(sec["market_price"]),
+            "settlementDate": pricing_date,
             "userTag": sec["cusip"],
             "curve": curve_obj,
             "prepaySettings": {"type": prepay_type, "rate": prepay_rate},
-            "volatility": {"type": vol_model},
+            "volatility": volatility,
             "extraSettings": {
                 "optionModel": "OASEDUR",
                 # Reverse-engineered from YBPRICE partial duration behavior.
@@ -533,20 +871,18 @@ def run_py(session, token: str, sec: Dict[str, Any]) -> Dict[str, Any]:
             },
         }],
     }
-    if vol_model.strip().upper() == "SINGLE":
-        payload["input"][0]["volatility"]["rate"] = 0
 
     if str(sec.get("prepay_model", "")).strip().lower() == "muni":
         points = sec.get("muni_curve_points", [])
         if points:
             print(
-                f"[INFO] {sec['cusip']}: found {len(points)} workbook tenor/rate points (B2:B14/E2:E14). "
-                f"Pricing with {curve_obj} (YBSW MUNI/USD equivalent; override YB_MUNI_CURVE_TYPE)."
+                f"[INFO] {sec['cusip']}: found {len(points)} muni tenor/par-rate points "
+                f"(YBCURVE Municipal OnTheRun ParRate style). Pricing with {curve_obj}."
             )
         else:
             print(
                 f"[INFO] {sec['cusip']}: Muni - pricing with {curve_obj} "
-                f"(YB_MUNI_CURVE_TYPE overrides; API may reject 'MUNI' - use LSEG enum names)."
+                f"(YB_MUNI_CURVE_TYPE overrides municipal curve enum when needed)."
             )
         if (os.environ.get("YB_PRINT_MUNI_CURVE_POINTS") or "").strip().lower() in {"1", "true", "yes", "y"}:
             print(f"[INFO] {sec['cusip']} muni_curve_points JSON:\n{muni_curve_points_debug_json(sec)}")
@@ -555,7 +891,7 @@ def run_py(session, token: str, sec: Dict[str, Any]) -> Dict[str, Any]:
     r = session.post(url, json=payload, headers=api_headers(token), timeout=60)
     if not r.ok:
         print(f"[ERROR] /bond/py failed for {sec['cusip']} HTTP {r.status_code}")
-        print(f"[ERROR] pricingDate={pricing_date}, curve={curve_obj}, prepayType={prepay_type}, prepayRate={prepay_rate}, volModel={vol_model}")
+        print(f"[ERROR] pricingDate={pricing_date}, curve={curve_obj}, prepayType={prepay_type}, prepayRate={prepay_rate}, volatility={volatility}")
         print(f"[ERROR] response: {r.text[:2000]}")
 
         # Retry once with safest generic settings.
@@ -587,22 +923,24 @@ def run_py(session, token: str, sec: Dict[str, Any]) -> Dict[str, Any]:
     if isinstance(max_servicer, str):
         max_servicer = {"name": max_servicer, "percent": None}
     return {
-        "forwardYield": (py_obj.get("ForwardYield") or {}).get("Yield"),
+        "forwardYield": (py_obj.get("ForwardYield") or {}).get("Yield")
+        if isinstance(py_obj.get("ForwardYield"), dict)
+        else get_first_key(py_obj.get("forwardMeasures") or {}, "yield", "Yield"),
         "bondYield": py_obj.get("yield") or py_obj.get("effectiveYield") or py_obj.get("streetYield"),
         "effectiveDuration": py_obj.get("effectiveDuration"),
         "effectiveConvexity": py_obj.get("effectiveConvexity"),
         "effectiveDV01": py_obj.get("effectiveDV01"),
         "dollarDuration": py_obj.get("dollarDuration"),
         "partialDurations": partial_durations,
-        "averageLife": py_obj.get("wal") or py_obj.get("averageLife"),
-        "ltCPR": py_obj.get("ltCPR"),
-        "lifeCPR": py_obj.get("lifeCPR"),
+        "averageLife": get_first_key(py_obj, "effectiveWAL", "EffectiveWAL", "wal", "averageLife"),
+        "LongTermCPR": extract_long_term_cpr(py_obj),
+        "PPHistCPRLife": extract_pphist_cpr_life(py_obj),
         "oas": py_obj.get("oas"),
         "zSpread": py_obj.get("zSpread"),
-        "factor": py_obj.get("factor"),
-        "gwac": py_obj.get("gwac"),
-        "wala": py_obj.get("wala"),
-        "wals": py_obj.get("wals"),
+        "factor": get_first_key(py_obj, "factor", "Factor"),
+        "GrossWAC": get_first_key(py_obj, "grossWAC", "GrossWAC", "gwac", "GWAC"),
+        "LoanAge": get_first_key(py_obj, "loanAge", "LoanAge", "wala", "WALA"),
+        "WeightedAvgLoanSize": get_first_key(py_obj, "weightedAvgLoanSize", "WeightedAvgLoanSize", "wals", "WALS"),
         "maxServicer": max_servicer,
     }
 
@@ -618,17 +956,19 @@ def run_scenarios(session, token: str, sec: Dict[str, Any]) -> List[Dict[str, An
     elif prepay_rate is None:
         prepay_rate = 100.0
     scen_curve = curve_dict_for(sec)
+    scen_volatility = resolve_volatility(sec)
 
     scenarios = []
 
+    prepay_type = normalize_prepay_type(sec.get("prepay_model"))
     for i, s in enumerate(SHOCKS_BPS, start=1):
         scenarios.append({
             "scenarioID": f"scen{i}",
-            "timing": "Gradual",
+            "timing": scenario_timing(),
             "definition": {
                 "userScenario": {
-                    "shiftType": "Par",
-                    "interpolationType": "Years",
+                    "shiftType": SCENARIO_SHIFT_TYPE,
+                    "interpolationType": SCENARIO_INTERPOLATION_TYPE,
                     "curveShifts": [{"year": 0.25, "value": s}],
                 }
             }
@@ -636,7 +976,8 @@ def run_scenarios(session, token: str, sec: Dict[str, Any]) -> List[Dict[str, An
     payload = {
         "globalSettings": {
             "pricingDate": pricing_date,
-            "horizonDays": 30,
+            "horizonDays": SCENARIO_HORIZON_DAYS,
+            "horizonMonths": SCENARIO_HORIZON_MONTHS,
         },
         "scenarios": scenarios,
         "calcInputs": [{
@@ -644,21 +985,27 @@ def run_scenarios(session, token: str, sec: Dict[str, Any]) -> List[Dict[str, An
             "identifier": sec["cusip"],
             "idType": "securityIDEntry",
             "curve": scen_curve,
+            "volatility": scen_volatility,
             "settlementInfo": {
                 "level": sec["market_price"],
                 "settlementType": "CUSTOM",
                 "settlementDate": pricing_date,
                 "prepay": {
-                    "type": normalize_prepay_type(sec.get("prepay_model")),
+                    "type": prepay_type,
                     "rate": prepay_rate,
                 },
             },
+            # Match settlement prepay: horizon legs previously sent rate-only and could diverge from Excel.
             "horizonInfo": [
-                {"scenarioID": f"scen{i}", "level": 0, "prepay": {"rate": prepay_rate}}
+                {
+                    "scenarioID": f"scen{i}",
+                    "level": 0,
+                    "prepay": {"type": prepay_type, "rate": prepay_rate},
+                }
                 for i, _ in enumerate(SHOCKS_BPS, start=1)
             ],
             "assumeCall": False,
-            "horizonPYMethod": "OAS Change",
+            "horizonPYMethod": scenario_horizon_py_method(),
         }],
     }
 
@@ -687,7 +1034,8 @@ def run_scenarios(session, token: str, sec: Dict[str, Any]) -> List[Dict[str, An
             results = jr.get("results", [])
             if not results:
                 return []
-            return (results[0].get("scenario") or {}).get("horizon", [])
+            raw_h = (results[0].get("scenario") or {}).get("horizon", [])
+            return normalize_scenario_horizon(raw_h)
         time.sleep(2)
     raise RuntimeError(f"Timed out waiting for scenario results for {sec['cusip']}")
 
@@ -704,7 +1052,7 @@ def derive_effective_dv01_at_horizon(h: Dict[str, Any]) -> Optional[float]:
     Fallback approximation when API does not return EffectiveDV01AtHorizon.
     DV01 ~= Duration * Price / 10000.
     """
-    dur = pick_metric(h, "effectiveDurationAtHorizon", "effectiveDuration", "duration")
+    dur = pick_metric(h, *SCENARIO_EFFDUR_KEYS)
     px = pick_metric(h, "fullPrice", "price", "actualFullPrice", "actualPrice")
     if dur is None or px is None:
         return None
@@ -718,13 +1066,8 @@ def merge_scenario_into_row(row: Dict[str, Any], scen: List[Dict[str, Any]]) -> 
     for i, shock in enumerate(SHOCKS_BPS):
         h = scen[i] if i < len(scen) else {}
         shock_label = f"{shock:+d}" if shock > 0 else str(shock)
-        row[f"EffDur_{shock_label}"] = pick_metric(
-            h,
-            "effectiveDurationAtHorizon",
-            "effectiveDuration",
-            "durationAtHorizon",
-            "duration",
-        )
+        # Yield Book scenario horizon typically exposes `duration` (risk duration after shock).
+        row[f"EffDur_{shock_label}"] = pick_metric(h, *SCENARIO_EFFDUR_KEYS)
         dv01_val = pick_metric(
             h,
             "effectiveDV01AtHorizon",
@@ -744,12 +1087,8 @@ def merge_scenario_into_row(row: Dict[str, Any], scen: List[Dict[str, Any]]) -> 
             if derived_dv01 is not None:
                 dv01_val = derived_dv01
         row[f"DV01_{shock_label}"] = dv01_val
-        row[f"DollarReturn_{shock_label}"] = pick_metric(
-            h,
-            "dollarReturnAtHorizon",
-            "dollarReturn",
-            "totalReturn",
-        )
+        # User rule: use API dollarReturn only for final shock results.
+        row[f"DollarReturn_{shock_label}"] = h.get("dollarReturn")
     return row
 
 
@@ -946,41 +1285,84 @@ def run_indic(session, token: str, sec: Dict[str, Any]) -> Dict[str, Any]:
         "MaxServicerName",     # also try API-servicer spelling
         "MaxServicerPercent",
     ]
-    payload = {
-        "keywords": keywords,
-        "identifierInfos": [{
-            "identifier": sec["cusip"],
-            "idType": "securityIDEntry",
-        }],
-        "globalSettings": {
-            "indicDate": indic_date,
-        },
-    }
-    r = session.post(api_url("bond/indic", mode="sync"), json=payload, headers=api_headers(token), timeout=60)
-    if not r.ok:
-        print(f"[WARN] /bond/indic failed for {sec['cusip']} HTTP {r.status_code}: {r.text[:500]}")
-        return {}
+    def _request_indic(use_keywords: bool) -> Dict[str, Any]:
+        payload = {
+            "identifierInfos": [{
+                "identifier": sec["cusip"],
+                "idType": "securityIDEntry",
+            }],
+            "globalSettings": {
+                "indicDate": indic_date,
+            },
+        }
+        if use_keywords:
+            payload["keywords"] = keywords
+        resp = session.post(
+            api_url("bond/indic", mode="sync"),
+            json=payload,
+            headers=api_headers(token),
+            timeout=60,
+        )
+        if not resp.ok:
+            if use_keywords:
+                print(f"[WARN] /bond/indic failed for {sec['cusip']} HTTP {resp.status_code}: {resp.text[:500]}")
+            return {}
+        results = resp.json().get("results") or []
+        return results[0].get("indic") or {} if results else {}
 
-    results = r.json().get("results") or []
-    if not results:
-        return {}
-    indic = results[0].get("indic") or {}
+    indic = _request_indic(use_keywords=True)
     if not indic:
         return {}
 
-    max_name = indic.get("maxServicerName")
-    if max_name is None:
-        max_name = indic.get("maxServiceName")
+    def _extract_values(indic_obj: Dict[str, Any]) -> Dict[str, Any]:
+        collateral_list = indic_obj.get("dataCollateralList")
+        collateral = collateral_list[0] if isinstance(collateral_list, list) and collateral_list else {}
+        if not isinstance(collateral, dict):
+            collateral = {}
 
-    return {
-        "factor": indic.get("factor"),
-        "lifeCPR": indic.get("ppHistCPRLife"),
-        "gwac": indic.get("grossWAC"),
-        "wala": indic.get("loanAge"),
-        "wals": indic.get("weightedAvgLoanSize"),
-        "maxServicerName": max_name,
-        "maxServicerPercent": indic.get("maxServicerPercent"),
-    }
+        gross_wac = get_first_key(indic_obj, "grossWAC", "GrossWAC", "gwac", "GWAC")
+        loan_age = get_first_key(indic_obj, "loanAge", "LoanAge", "wala", "WALA")
+        wals = get_first_key(indic_obj, "weightedAvgLoanSize", "WeightedAvgLoanSize", "wals", "WALS")
+        if gross_wac is None:
+            gross_wac = get_first_key(collateral, "grossWAC", "GrossWAC", "gwac", "GWAC")
+        if loan_age is None:
+            loan_age = get_first_key(collateral, "loanAge", "LoanAge", "wala", "WALA")
+        if wals is None:
+            wals = get_first_key(collateral, "weightedAvgLoanSize", "WeightedAvgLoanSize", "wals", "WALS", "loanSize", "LoanSize")
+
+        max_name = get_first_key(indic_obj, "maxServicerName", "MaxServicerName", "maxServiceName", "MaxServiceName")
+        max_pct = get_first_key(indic_obj, "maxServicerPercent", "MaxServicerPercent")
+        if max_name is None or max_pct is None:
+            serv_list = collateral.get("maxServicerList")
+            if isinstance(serv_list, list) and serv_list and isinstance(serv_list[0], dict):
+                top_serv = serv_list[0]
+                if max_name is None:
+                    max_name = top_serv.get("name")
+                if max_pct is None:
+                    max_pct = top_serv.get("percent")
+
+        return {
+            "factor": get_first_key(indic_obj, "factor", "Factor"),
+            "PPHistCPRLife": extract_pphist_cpr_life(indic_obj),
+            "GrossWAC": gross_wac,
+            "LoanAge": loan_age,
+            "WeightedAvgLoanSize": wals,
+            "maxServicerName": max_name,
+            "maxServicerPercent": max_pct,
+        }
+
+    extracted = _extract_values(indic)
+    if (
+        extracted["GrossWAC"] is None
+        and extracted["LoanAge"] is None
+        and extracted["WeightedAvgLoanSize"] is None
+        and not indic.get("dataCollateralList")
+    ):
+        indic_full = _request_indic(use_keywords=False)
+        if indic_full:
+            extracted = _extract_values(indic_full)
+
+    return extracted
 
 
 def run_py_keyword_measures(session, token: str, sec: Dict[str, Any]) -> Dict[str, Any]:
@@ -996,9 +1378,14 @@ def run_py_keyword_measures(session, token: str, sec: Dict[str, Any]) -> Dict[st
             prepay_rate = 0.0
     elif prepay_rate is None:
         prepay_rate = 100.0
-    # User rule: for Agency MBS ARM, force prepay rate to 15 in YBPRICE avg-life call.
-    if sub_type.lower() == "agency mbs arm":
-        prepay_rate = 15.0
+    # Optional override for Agency MBS ARM benchmarking; default is to respect input prepay rate.
+    arm_force_raw = (os.environ.get("YB_ARM_FORCE_PREPAY_RATE") or "").strip()
+    if sub_type.lower() == "agency mbs arm" and arm_force_raw:
+        arm_force = parse_number(arm_force_raw)
+        if arm_force is not None:
+            prepay_rate = float(arm_force)
+    if str(sec.get("prepay_model", "")).strip().lower() == "muni":
+        sec["muni_curve_points"] = resolve_muni_curve_points(session, token, sec)
     curve_obj = curve_dict_for(sec)
     prepay_type = normalize_prepay_type(sec.get("prepay_model"))
 
@@ -1010,6 +1397,7 @@ def run_py_keyword_measures(session, token: str, sec: Dict[str, Any]) -> Dict[st
                 "identifier": sec["cusip"],
                 "idType": "securityIDEntry",
                 "level": str(sec["market_price"]),
+                "settlementDate": pricing_date,
                 # REST does not expose a direct securitySubType field, use props to pass subtype context.
                 "props": {"subType": sub_type} if sub_type else {},
                 "curve": curve_obj,
@@ -1038,14 +1426,16 @@ def run_py_keyword_measures(session, token: str, sec: Dict[str, Any]) -> Dict[st
             time.sleep(1)
         return {}
 
-    # Try Single first for consistency, then fallback to Default.
-    py_kw = _submit({"type": "Single", "rate": 0})
+    # Try resolved volatility first, then fallback to Default.
+    primary_vol = resolve_volatility(sec)
+    py_kw = _submit(primary_vol)
     if py_kw.get("returnCode") == 1 or not py_kw:
-        py_kw = _submit({"type": "Default"})
+        if str(primary_vol.get("type", "")).strip().upper() != "DEFAULT":
+            py_kw = _submit({"type": "Default"})
 
     return {
         "averageLife": py_kw.get("effectiveWAL"),
-        "ltCPR": py_kw.get("longTermCPR") if py_kw.get("longTermCPR") is not None else py_kw.get("ltCPR"),
+        "LongTermCPR": extract_long_term_cpr(py_kw),
         "oas": py_kw.get("oas"),
         "zSpread": py_kw.get("zSpread"),
     }
@@ -1077,14 +1467,14 @@ def run_full_analysis_for_security(session, token: str, sec: Dict[str, Any]) -> 
         "PD_30Y": py.get("partialDurations", {}).get("30Y"),
 
         "Average_Life": py_kw.get("averageLife") if py_kw.get("averageLife") is not None else py.get("averageLife"),
-        "LT_CPR": py_kw.get("ltCPR") if py_kw.get("ltCPR") is not None else py.get("ltCPR"),
-        "Life_CPR": py.get("lifeCPR") if py.get("lifeCPR") is not None else indic.get("lifeCPR"),
+        "LT_CPR": py_kw.get("LongTermCPR") if py_kw.get("LongTermCPR") is not None else py.get("LongTermCPR"),
+        "Life_CPR": resolve_life_cpr_value(sec.get("sub_type"), py, indic),
         "OAS": py_kw.get("oas") if py_kw.get("oas") is not None else py.get("oas"),
         "Z_Spread": py_kw.get("zSpread") if py_kw.get("zSpread") is not None else py.get("zSpread"),
         "Factor": py.get("factor") if py.get("factor") is not None else indic.get("factor"),
-        "GWAC": py.get("gwac") if py.get("gwac") is not None else indic.get("gwac"),
-        "WALA": py.get("wala") if py.get("wala") is not None else indic.get("wala"),
-        "WALS": py.get("wals") if py.get("wals") is not None else indic.get("wals"),
+        "GWAC": py.get("GrossWAC") if py.get("GrossWAC") is not None else indic.get("GrossWAC"),
+        "WALA": py.get("LoanAge") if py.get("LoanAge") is not None else indic.get("LoanAge"),
+        "WALS": py.get("WeightedAvgLoanSize") if py.get("WeightedAvgLoanSize") is not None else indic.get("WeightedAvgLoanSize"),
         "MaxServicerName": py.get("maxServicer", {}).get("name")
         if py.get("maxServicer", {}).get("name") is not None
         else indic.get("maxServicerName"),
