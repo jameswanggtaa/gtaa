@@ -19,7 +19,7 @@ POST: https://api.yieldbook.com/analytics/v2/jobs/
 {
     "name": "abcd"
 }
-
+=YBPRICE("000416V38",94.77349,2026-04-30,"Yield","RFRSwap","2026-04-30","Single","MatrixWSkew","Model",100,"PDUR7",,0.1)
  
 
 
