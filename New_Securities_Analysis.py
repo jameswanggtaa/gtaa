@@ -1,8 +1,10 @@
 import os
+import re
+import math
 import csv
 import time
 from concurrent.futures import ThreadPoolExecutor
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 from datetime import date
 
 import requests as rq
@@ -35,7 +37,7 @@ def parallel_worker_count() -> int:
     Set YB_WORKERS or YB_PARALLEL_WORKERS (default 1 = sequential).
     Use a modest value (e.g. 4–8); the API may rate-limit heavy parallelism.
     """
-    raw = (os.environ.get("YB_WORKERS") or os.environ.get("YB_PARALLEL_WORKERS") or "16").strip()
+    raw = (os.environ.get("YB_WORKERS") or os.environ.get("YB_PARALLEL_WORKERS") or "10").strip()
     try:
         n = int(raw)
         return max(1, min(n, 32))
@@ -140,6 +142,7 @@ OUTPUT_COLUMNS = [
     "Sub Type",
 
     "Forward_Yield",
+    "Prospective_Yield",
     "Effective_Duration",
     "Effective_Convexity",
     "Effective_DV01",
@@ -250,8 +253,12 @@ def normalize_date(val: Any) -> Optional[str]:
 
 def normalize_prepay_type(val: Any) -> Any:
     """
-    REST does not support Excel YBSW / muni curve construction.
-    Muni is treated as Model for analytics.
+    Map Excel prepay model labels to REST ``prepaySettings.type``.
+
+    Excel's **Prepay Model = Muni** names the municipal *pricing curve* recipe (YBSW),
+    not a mortgage PSA/Model stream. For actual REST payloads we normally send
+    ``CPY`` / ``0`` instead (see ``prepay_type_and_rate_for_api``); set
+    ``YB_MUNI_PREPAY_LEGACY=1`` to restore the older ``Model`` / file-rate mapping.
     """
     if val is None:
         return "Model"
@@ -263,6 +270,101 @@ def normalize_prepay_type(val: Any) -> Any:
     if s.startswith("model"):
         return int("".join(filter(str.isdigit, s)))
     return s.upper()
+
+
+def security_uses_municipal_curve(sec: Dict[str, Any]) -> bool:
+    """True when Excel prepay model is Muni (YBSW / job-store curve context)."""
+    return str(sec.get("prepay_model", "")).strip().lower() == "muni"
+
+
+def security_is_municipal_bond(sec: Dict[str, Any]) -> bool:
+    """
+    Municipal product for REST prepay/vol heuristics: prepay model Muni and/or Sub Type MUNI.
+    """
+    if security_uses_municipal_curve(sec):
+        return True
+    st = (sec.get("sub_type") or "").strip().upper()
+    return "MUNI" in st if st else False
+
+
+def prepay_type_and_rate_for_api(sec: Dict[str, Any]) -> Tuple[Any, float]:
+    """
+    ``prepaySettings`` type and rate for /bond/py, scenario-calc, and keyword py.
+
+    Municipal bonds: default **CPY / 0** (same convention as Agency passthrough rows in
+    many portfolio exports). Excel often shows Prepay Model Muni with Prepay Rate 100;
+    sending **Model / 100** to REST can look like a fully ramped mortgage model and
+    leave option-sensitive fields (OAS, WAL, CPR paths) empty.
+
+    Override defaults:
+    - ``YB_MUNI_PREPAY_LEGACY=1`` — use ``normalize_prepay_type`` + file prepay rate.
+    - ``YB_MUNI_CPY_RATE`` — if set (numeric), use **CPY** with that rate instead of 0.
+    """
+    if sub_type_is_treasury(sec.get("sub_type")):
+        pr = sec.get("prepay_rate")
+        if pr is None:
+            pr = 0.0
+        try:
+            prf = float(pr)
+        except (TypeError, ValueError):
+            pn = parse_number(pr)
+            prf = float(pn) if pn is not None else 0.0
+        return normalize_prepay_type(sec.get("prepay_model")), prf
+
+    legacy = (os.environ.get("YB_MUNI_PREPAY_LEGACY") or "").strip().lower() in {"1", "true", "yes", "y"}
+    if not legacy and security_is_municipal_bond(sec):
+        cpy_custom = parse_number(os.environ.get("YB_MUNI_CPY_RATE"))
+        rate = float(cpy_custom) if cpy_custom is not None else 0.0
+        return "CPY", rate
+
+    pr = sec.get("prepay_rate")
+    if pr is None:
+        pr = 100.0
+    try:
+        prf = float(pr)
+    except (TypeError, ValueError):
+        pn = parse_number(pr)
+        prf = float(pn) if pn is not None else 100.0
+    return normalize_prepay_type(sec.get("prepay_model")), prf
+
+
+def py_calc_props(sec: Dict[str, Any]) -> Dict[str, str]:
+    """REST ``props`` for pyCalcInputs / sync input (subtype is not a top-level field)."""
+    st = (sec.get("sub_type") or "").strip()
+    return {"subType": st} if st else {}
+
+
+def yieldbook_security_identifier(sec: Dict[str, Any]) -> str:
+    """
+    REST ``identifier`` for ``securityIDEntry`` (/bond/py, scenario-calc, indic, async py, …).
+
+    Many **Structured Agency CMBS** tranches are stored in Yield Book under ``<CUSIP>.cmo``.
+    Workbooks often list the nine-character CUSIP only; with that form, sync PY can return
+    empty yields and durations while still returning a few collateral fields. Appending
+    ``.cmo`` (when not already present) restores full pricing for those names. Other sub types
+    are returned unchanged (``Agency CMBS`` / ``Agency CMO`` rows behave with or without the suffix
+    in typical tenants).
+    """
+    c = str(sec.get("cusip") or "").strip()
+    if not c or c.upper().endswith(".CMO"):
+        return c
+    st = (sec.get("sub_type") or "").strip().lower()
+    if st == "structured agency cmbs":
+        return f"{c}.cmo"
+    return c
+
+
+def muni_rest_embed_curve_points_enabled() -> bool:
+    """
+    When False, municipal REST requests omit embedded tenor/rate pillars (see ``curve_dict_for``).
+
+    For **Prepay Model Muni** without a job-store ``$ref``, the curve is then **``{curveType}`` only**
+    (e.g. ``SWAP_RFR``), matching Excel ``YBPRICE(..., \"RFRSwap\", ...)`` / LSEG samples.
+
+    Set ``YB_MUNI_INCLUDE_CURVE_POINTS=0`` to disable embedding. Default is on (1) for job-store / tenants that accept inline spots.
+    """
+    raw = (os.environ.get("YB_MUNI_INCLUDE_CURVE_POINTS") or "1").strip().lower()
+    return raw in {"1", "true", "yes", "y"}
 
 
 def curve_type(val: Any, prepay_model: Any) -> str:
@@ -294,18 +396,31 @@ def curve_dict_for(sec: Dict[str, Any]) -> Dict[str, Any]:
     Optional tenor/rate pairs are stored on the security as muni_curve_points (from
     Excel B2:B14/E2:E14 or muni_ybsw_curve.csv) for logging and for future custom-curve
     wiring once the schema is known.
+
+    When LSEG support's job-store user curve is used, ``sec[\"yb_user_curve_ref\"]`` holds
+    the upload request id (e.g. R-733194743). See ``prepare_muni_job_store_curve_ref`` and
+    set env ``YB_MUNI_JOB_STORE=1`` before running muni benchmarks.
+
+    Embedded pillars are omitted when ``muni_rest_embed_curve_points_enabled()`` is false
+    (``YB_MUNI_INCLUDE_CURVE_POINTS=0``): for **Prepay Model Muni** (no job-store ``$ref``)
+    the curve is **``{curveType}`` only** (e.g. ``SWAP_RFR``), matching Excel
+    ``YBPRICE(..., \"RFRSwap\", ...)`` / LSEG sync samples — no ``currency``, no muni pillars.
+
+    With embedded pillars or ``yb_user_curve_ref``, shape follows job-store / tenant rules.
     """
+    ref = str(sec.get("yb_user_curve_ref") or "").strip()
+    if ref and security_uses_municipal_curve(sec):
+        return {"userDefined": {"$ref": ref}}
+
     ct = curve_type(sec.get("curve_type"), sec.get("prepay_model"))
-    curve_obj: Dict[str, Any] = {"curveType": ct, "currency": "USD"}
+    is_muni = security_uses_municipal_curve(sec)
+    use_custom = is_muni and muni_rest_embed_curve_points_enabled()
 
     # Optional: attach YBSW-style muni tenor/rate points into curve object.
     # This is tenant/schema dependent; keep behind an env flag.
-    is_muni = str(sec.get("prepay_model", "")).strip().lower() == "muni"
-    use_custom_raw = (os.environ.get("YB_MUNI_INCLUDE_CURVE_POINTS") or "1").strip().lower()
-    use_custom = use_custom_raw in {"1", "true", "yes", "y"}
-    if is_muni and use_custom:
+    if use_custom:
         pts_raw = sec.get("muni_curve_points") or []
-        pts = []
+        pts: List[Dict[str, float]] = []
         for p in pts_raw:
             if not isinstance(p, dict):
                 continue
@@ -316,6 +431,7 @@ def curve_dict_for(sec: Dict[str, Any]) -> Dict[str, Any]:
             pts.append({"year": float(y), "rate": float(r)})
 
         if pts:
+            curve_obj: Dict[str, Any] = {"curveType": ct, "currency": "USD"}
             # Field names are configurable because contracts may use different schemas.
             # Examples to try:
             #   YB_MUNI_CURVE_POINTS_KEYS=curveSpots,userCurveSpots
@@ -328,8 +444,159 @@ def curve_dict_for(sec: Dict[str, Any]) -> Dict[str, Any]:
             mapped_pts = [{year_key: p["year"], rate_key: p["rate"]} for p in pts]
             for k in keys:
                 curve_obj[k] = mapped_pts
+            return curve_obj
 
-    return curve_obj
+    if is_muni:
+        return {"curveType": ct}
+
+    return {"curveType": ct, "currency": "USD"}
+
+
+def extract_yb_job_store_ref(obj: Any) -> Optional[str]:
+    """Locate R-######## request id from analytics v2 job-store JSON (shape varies by tenant)."""
+    if obj is None:
+        return None
+    if isinstance(obj, str):
+        s = obj.strip()
+        if re.fullmatch(r"R-\d+", s):
+            return s
+        return None
+    if isinstance(obj, dict):
+        for k in ("requestId", "request_id", "id", "resourceId", "curveRequestId", "requestID"):
+            v = obj.get(k)
+            if isinstance(v, str):
+                vs = v.strip()
+                if re.fullmatch(r"R-\d+", vs):
+                    return vs
+        for v in obj.values():
+            found = extract_yb_job_store_ref(v)
+            if found:
+                return found
+    if isinstance(obj, list):
+        for v in obj:
+            found = extract_yb_job_store_ref(v)
+            if found:
+                return found
+    return None
+
+
+def create_analytics_job(session, token: str, job_name: str) -> Dict[str, Any]:
+    """POST /analytics/v2/jobs/ — container for user curve uploads (LSEG muni workflow)."""
+    url = api_url("jobs").rstrip("/") + "/"
+    r = session.post(url, json={"name": job_name}, headers=api_headers(token), timeout=60)
+    if not r.ok:
+        snippet = (r.text or "")[:1200]
+        raise RuntimeError(f"create job HTTP {r.status_code}: {snippet}")
+    if not (r.text or "").strip():
+        return {}
+    try:
+        return r.json()
+    except Exception:
+        return {}
+
+
+def upload_job_store_user_curve(
+    session,
+    token: str,
+    job_name: str,
+    term_rate_points: List[Dict[str, float]],
+    asof: str,
+) -> str:
+    """
+    POST /analytics/v2/job-store/{job}/curve with USERSW-style swap curve (support recipe for muni pillars).
+
+    term_rate_points: items with float \"term\" (year fraction) and \"rate\" (percent, same as Excel YBSW column).
+    """
+    if not term_rate_points:
+        raise ValueError("term_rate_points is empty")
+    swap_index = (os.environ.get("YB_MUNI_JOB_SWAP_INDEX") or "SOFR").strip() or "SOFR"
+    try:
+        compound = int(os.environ.get("YB_MUNI_JOB_COMPOUNDING_FREQ") or "2")
+    except ValueError:
+        compound = 2
+    body: Dict[str, Any] = {
+        "curveType": "SWAP",
+        "currency": "USD",
+        "points": [{"rate": float(p["rate"]), "term": float(p["term"])} for p in term_rate_points],
+        "rateType": "Par",
+        "source": "USERSW",
+        "swapIndex": swap_index,
+        "asof": asof,
+        "compoundingFreq": compound,
+    }
+    url = api_url(f"job-store/{job_name}/curve")
+    r = session.post(url, json=body, headers=api_headers(token), timeout=120)
+    if not r.ok:
+        snippet = (r.text or "")[:2000]
+        raise RuntimeError(f"job-store curve HTTP {r.status_code}: {snippet}")
+    ref = extract_yb_job_store_ref(r.json())
+    if not ref:
+        snippet = (r.text or "")[:2000]
+        raise ValueError(f"job-store curve upload succeeded but no R- request id in JSON: {snippet}")
+    return ref
+
+
+def muni_points_to_job_store_terms(points: List[Dict[str, float]]) -> List[Dict[str, float]]:
+    """Map internal {\"year\", \"rate\"} muni pillars to job-store {\"term\", \"rate\"}."""
+    out: List[Dict[str, float]] = []
+    for p in points:
+        if not isinstance(p, dict):
+            continue
+        y = parse_number(p.get("year"))
+        r = parse_number(p.get("rate"))
+        if y is None or r is None:
+            continue
+        term = float(y)
+        if term <= 0.0:
+            term = float(os.environ.get("YB_MUNI_JOB_ZERO_TERM") or "0.002739726")
+        out.append({"term": term, "rate": float(r)})
+    return out
+
+
+def prepare_muni_job_store_curve_ref(session, token: str, securities: List[Dict[str, Any]]) -> None:
+    """
+    One shared user curve for all Muni prepay_model rows (matches LSEG job-store guidance).
+
+    Enable with: YB_MUNI_JOB_STORE=1
+    Optional: YB_MUNI_JOB_NAME=mycurve  (default: muni + millisecond timestamp)
+    """
+    flag = (os.environ.get("YB_MUNI_JOB_STORE") or "").strip().lower() in {"1", "true", "yes", "y"}
+    if not flag:
+        return
+    muni_secs = [s for s in securities if security_uses_municipal_curve(s)]
+    if not muni_secs:
+        return
+    first = muni_secs[0]
+    first["muni_curve_points"] = resolve_muni_curve_points(session, token, first)
+    pts = first.get("muni_curve_points") or []
+    if not pts:
+        print(
+            "[WARN] YB_MUNI_JOB_STORE: no muni curve points; skipping job-store upload. "
+            "Add muni_ybsw_curve.csv or muni_ybcurve.csv beside the portfolio file, "
+            "or put tenor/rate pillars in the Muni .xlsx (B2:B14 / E2:E14)."
+        )
+        return
+    for s in muni_secs:
+        s["muni_curve_points"] = list(pts)
+    asof = str(first.get("curve_date") or default_pricing_date())
+    job_name = (os.environ.get("YB_MUNI_JOB_NAME") or "").strip() or f"muni{int(time.time() * 1000)}"
+    term_rates = muni_points_to_job_store_terms(pts)
+    if not term_rates:
+        print("[WARN] YB_MUNI_JOB_STORE: could not map muni_curve_points to term/rate; skipping.")
+        return
+    try:
+        create_analytics_job(session, token, job_name)
+    except Exception as e:
+        print(f"[WARN] YB_MUNI_JOB_STORE: create job ({job_name!r}) failed: {e}; retrying alternate name.")
+        job_name = f"{job_name}_{int(time.time() * 1000)}"
+        create_analytics_job(session, token, job_name)
+    ref = upload_job_store_user_curve(session, token, job_name, term_rates, asof)
+    for s in muni_secs:
+        s["yb_user_curve_ref"] = ref
+    print(
+        f"[INFO] YB_MUNI_JOB_STORE: user curve ref={ref} job={job_name!r} "
+        f"points={len(term_rates)} asof={asof}"
+    )
 
 
 def _extract_curve_points_from_obj(obj: Any) -> List[Dict[str, float]]:
@@ -354,13 +621,17 @@ def fetch_muni_curve_points_from_ybcurve(session, token: str, sec: Dict[str, Any
     If unavailable for the tenant/schema, return [].
     """
     pricing_date = sec.get("curve_date") or default_pricing_date()
+    try:
+        lvl = str(bond_py_level_value(sec))
+    except ValueError:
+        return []
     body = {
         "keywords": ["YBCURVE"],
         "globalSettings": {"pricingDate": pricing_date},
         "pyCalcInputs": [{
             "identifier": sec["cusip"],
             "idType": "securityIDEntry",
-            "level": str(sec["market_price"]),
+            "level": lvl,
             "settlementDate": pricing_date,
             "curve": {"curveType": "SWAP_RFR", "currency": "USD"},
             "prepaySettings": {"type": "Model", "rate": sec.get("prepay_rate") or 100.0},
@@ -456,6 +727,79 @@ def resolve_forward_yield_column(py: Dict[str, Any], sub_type: Optional[str]) ->
     return fy if fy is not None else y
 
 
+def resolve_prospective_yield_from_py(py_at_book: Optional[Dict[str, Any]], sub_type: Optional[str]) -> Any:
+    """
+    OUTPUT column Prospective_Yield: same measure as ``Forward_Yield`` (Excel YBPRICE ``forwardYield`` slot),
+    but from a **book-price** /bond/py pass (``MTB_BOOK PRICE (Clean)``), matching workbook Prospective Yield.
+    """
+    if not py_at_book:
+        return pd.NA
+    return resolve_forward_yield_column(py_at_book, sub_type)
+
+
+def muni_vol_single_from_curve_enabled() -> bool:
+    """
+    When true, municipal (Prepay Model Muni) rows use ``volatility.type`` = ``Single`` with
+    ``volatility.rate`` interpolated from ``muni_curve_points`` (sidecar CSV / job-store pillars),
+    while ``YB_MUNI_INCLUDE_CURVE_POINTS=0`` can still keep the **curve** object as plain ``SWAP_RFR``.
+
+    Set ``YB_MUNI_VOL_SINGLE_FROM_CURVE=1``. Optional: ``YB_MUNI_VOL_INTERP_YEAR`` (default **10**)
+    for the pillar year used in linear interpolation.
+
+    This is an experimental knob for benchmark research vs ``MatrixWSkew`` defaults.
+    """
+    return (os.environ.get("YB_MUNI_VOL_SINGLE_FROM_CURVE") or "").strip().lower() in {"1", "true", "yes", "y"}
+
+
+def derive_volatility_rate_from_muni_points(
+    pts: List[Dict[str, Any]],
+    target_year: Optional[float] = None,
+) -> Optional[float]:
+    """
+    Linearly interpolate **par rate** (percent units as stored in sidecar) at ``target_year``
+    from ``muni_curve_points`` ``{year, rate}`` nodes. Used only as a scalar ``Single`` vol input
+    when exploring REST behavior; it is **not** guaranteed to match Yield Book OAS vol conventions.
+    """
+    if target_year is None:
+        ty_raw = (os.environ.get("YB_MUNI_VOL_INTERP_YEAR") or "10").strip()
+        try:
+            target_year = float(ty_raw)
+        except ValueError:
+            target_year = 10.0
+
+    pairs: List[Tuple[float, float]] = []
+    for p in pts:
+        if not isinstance(p, dict):
+            continue
+        y = parse_number(p.get("year"))
+        r = parse_number(p.get("rate"))
+        if y is None or r is None:
+            continue
+        pairs.append((float(y), float(r)))
+    if not pairs:
+        return None
+    pairs.sort(key=lambda t: t[0])
+    if len(pairs) == 1:
+        return pairs[0][1]
+    y_t = float(target_year)
+    for y, r in pairs:
+        if abs(y - y_t) < 1e-9:
+            return float(r)
+    if y_t <= pairs[0][0]:
+        return float(pairs[0][1])
+    if y_t >= pairs[-1][0]:
+        return float(pairs[-1][1])
+    for i in range(len(pairs) - 1):
+        y0, r0 = pairs[i]
+        y1, r1 = pairs[i + 1]
+        if y0 <= y_t <= y1:
+            if abs(y1 - y0) < 1e-15:
+                return float(r0)
+            t = (y_t - y0) / (y1 - y0)
+            return float(r0 + t * (r1 - r0))
+    return None
+
+
 def resolve_volatility(sec: Dict[str, Any]) -> Dict[str, Any]:
     """
     Build volatility payload aligned to product conventions.
@@ -466,8 +810,16 @@ def resolve_volatility(sec: Dict[str, Any]) -> Dict[str, Any]:
 
     vol_raw = sec.get("vol_model")
     vol_model = (str(vol_raw).strip() if vol_raw is not None else "") or "Default"
-    is_muni = str(sec.get("prepay_model", "")).strip().lower() == "muni"
+    is_muni = security_is_municipal_bond(sec)
     vol_upper = vol_model.upper()
+
+    if muni_vol_single_from_curve_enabled() and security_uses_municipal_curve(sec):
+        pts = sec.get("muni_curve_points") or []
+        vr = derive_volatility_rate_from_muni_points(pts)
+        if vr is not None:
+            # API accepts string or number; keep short decimal string.
+            rate_s = f"{float(vr):.6f}".rstrip("0").rstrip(".")
+            return {"type": "Single", "rate": rate_s if rate_s else "0"}
 
     if is_muni and vol_upper == "SINGLE":
         return {"type": "MatrixWSkew"}
@@ -556,6 +908,53 @@ def parse_number(val: Any) -> Optional[float]:
         return float(s)
     except ValueError:
         return None
+
+
+def bond_py_level_value(sec: Dict[str, Any]) -> float:
+    """
+    Numeric market level for Yield Book bond/py (field ``level``).
+    Raises ValueError if missing or non-finite; the API rejects e.g. ``Invalid level: nan``.
+    """
+    mp = sec.get("market_price")
+    if mp is None or pd.isna(mp):
+        raise ValueError(
+            "Missing or invalid market price (Yield Book requires a numeric level / price)."
+        )
+    try:
+        v = float(mp)
+    except (TypeError, ValueError):
+        pn = parse_number(mp)
+        if pn is None or pd.isna(pn):
+            raise ValueError(
+                "Missing or invalid market price (Yield Book requires a numeric level / price)."
+            )
+        v = float(pn)
+    if math.isnan(v) or math.isinf(v):
+        raise ValueError(
+            "Missing or invalid market price (Yield Book requires a numeric level / price)."
+        )
+    return v
+
+
+def bond_py_level_for_request(sec: Dict[str, Any], level_override: Optional[float] = None) -> float:
+    """
+    Numeric ``level`` for /bond/py. Defaults to ``market_price`` (``bond_py_level_value``).
+    ``level_override`` is used for a second pass at **book price** (Excel Prospective Yield / YBPRICE book).
+    """
+    if level_override is not None:
+        if isinstance(level_override, float) and pd.isna(level_override):
+            raise ValueError("Invalid level_override (nan) for Yield Book /bond/py level.")
+        try:
+            v = float(level_override)
+        except (TypeError, ValueError):
+            pn = parse_number(level_override)
+            if pn is None or (isinstance(pn, float) and pd.isna(pn)):
+                raise ValueError("Invalid level_override for Yield Book /bond/py level.")
+            v = float(pn)
+        if math.isnan(v) or math.isinf(v):
+            raise ValueError("Invalid level_override for Yield Book /bond/py level.")
+        return v
+    return bond_py_level_value(sec)
 
 
 def clean_text(val: Any) -> Optional[str]:
@@ -705,7 +1104,8 @@ def read_muni_spot_curve_sidecar(input_file: str) -> List[Dict[str, float]]:
       muni_ybcurve.csv     (or Muni_ybcurve.csv)
       muni_ybsw_curve.csv  (or Muni_ybsw_curve.csv)
 
-    Columns (case-insensitive): year or tenor | rate or parrate or spot or yield
+    Columns (case-insensitive): YrLookup (Excel YBSW column B) or year/tenor/term, plus
+    rate (or parrate, spot, yield). Optional: CurveDate, Years (labels like 1 Month), Curve.
     Accepts YBCURVE-style tenor labels:
       current, 1m, 3m, 6m, 1y, 2y, 3y, 4y, 5y, 7y, 10y, 20y, 30y
     """
@@ -740,7 +1140,16 @@ def read_muni_spot_curve_sidecar(input_file: str) -> List[Dict[str, float]]:
         try:
             df = pd.read_csv(p)
             cols = col_lookup(df)
-            ycol = find_col(cols, "year", "tenor", "maturity", "maturityyears", "term")
+            ycol = find_col(
+                cols,
+                "yrlookup",
+                "year",
+                "tenor",
+                "maturity",
+                "maturityyears",
+                "term",
+                "years",
+            )
             rcol = find_col(cols, "parrate", "rate", "spot", "yield", "par", "zero")
             if not ycol or not rcol:
                 continue
@@ -780,6 +1189,13 @@ def load_securities() -> List[Dict[str, Any]]:
     maturity_col = find_col(cols, "Maturity_Date", "Maturity Date", "Maturity")
     sub_type_col = find_col(cols, "Sub Type", "Sub_Type", "Subtype")
     market_price_col = find_col(cols, "Market_price", "Market Price")
+    book_price_col = find_col(
+        cols,
+        "MTB_BOOK PRICE (Clean)",
+        "MTB_BOOK_PRICE",
+        "MTB Book Price (Clean)",
+        "Book Price",
+    )
     curve_date_col = find_col(cols, "Curve_Date", "Curve date")
     prepay_model_col = find_col(cols, "Prepay_Model", "Prepayment model", "Prepayment_Model")
     prepay_rate_col = find_col(cols, "Prepay_Rate", "prepay_rate")
@@ -819,7 +1235,8 @@ def load_securities() -> List[Dict[str, Any]]:
             "sub_type": sub_type,
             "coupon": parse_number(r[coupon_col]) if coupon_col else None,
             "maturity": normalize_date(r[maturity_col]),
-            "market_price": parse_number(r[market_price_col]) or r[market_price_col],
+            "market_price": parse_number(r[market_price_col]),
+            "book_price": parse_number(r[book_price_col]) if book_price_col else None,
             "curve_date": normalize_date(r[curve_date_col]) if curve_date_col else default_pricing_date(),
             "prepay_model": prepay_model,
             "prepay_rate": prepay_rate_val,
@@ -834,31 +1251,94 @@ def load_securities() -> List[Dict[str, Any]]:
 # ---------------------------------------------------------
 # PY Analytics
 # ---------------------------------------------------------
-def run_py(session, token: str, sec: Dict[str, Any]) -> Dict[str, Any]:
-    prepay_rate = sec.get("prepay_rate")
-    if sub_type_is_treasury(sec.get("sub_type")):
-        if prepay_rate is None:
-            prepay_rate = 0.0
-    elif prepay_rate is None:
-        prepay_rate = 100.0
+def muni_sync_py_ybprice_rfrswap_shape(sec: Dict[str, Any], curve_obj: Dict[str, Any]) -> bool:
+    """
+    True when sync ``/bond/py`` should match Excel ``YBPRICE(..., \"RFRSwap\", ...)``:
+    only ``curveType`` on the curve (no ``currency``, pillars, or job-store ``$ref``).
 
+    If ``curve_obj`` includes embedded spot arrays or ``userDefined``, the full pyCalc
+    shape (``prepaySettings``, ``idType``, …) is used instead.
+    """
+    if not security_uses_municipal_curve(sec):
+        return False
+    if str(sec.get("yb_user_curve_ref") or "").strip():
+        return False
+    return set(curve_obj.keys()) == {"curveType"}
+
+
+def structured_agency_cmbs_ybprice_sync_shape(sec: Dict[str, Any], curve_obj: Dict[str, Any]) -> bool:
+    """
+    True when sync ``/bond/py`` should match the Excel add-in for **Structured Agency CMBS**:
+    ``CUSIP.cmo`` id, ``curveType`` = SWAP_RFR only, ``prepaySettings`` (e.g. CPY / 0),
+    ``volatility`` = LMMSOFRFLAT from the file, ``extraSettings.includePartials`` = true
+    (required for ``dataPartialDurationList`` / YBPRICE ``PDUR*`` keywords),
+    ``floaterSettings`` = ``{}``, and ``globalSettings.pricingDate`` only (no ``retrievePPMProjection``).
+
+    That shape matches ``YBPRICE(..., \"RFRSwap\", ..., \"LMMSOFRFLAT\", \"\", \"CPY\", 0, \"\")``
+    plus partials when the last keyword requests PDURs.
+    """
+    if (sec.get("sub_type") or "").strip().lower() != "structured agency cmbs":
+        return False
+    if str(sec.get("yb_user_curve_ref") or "").strip():
+        return False
+    if not str(curve_obj.get("curveType") or "").strip():
+        return False
+    # Excel RFRSwap path: no embedded user curve or muni pillars on the curve object.
+    if "userDefined" in curve_obj:
+        return False
+    return True
+
+
+def run_py(session, token: str, sec: Dict[str, Any], *, level_override: Optional[float] = None) -> Dict[str, Any]:
     pricing_date = sec.get("curve_date") or default_pricing_date()
-    if str(sec.get("prepay_model", "")).strip().lower() == "muni":
+    if security_uses_municipal_curve(sec) and muni_rest_embed_curve_points_enabled():
         sec["muni_curve_points"] = resolve_muni_curve_points(session, token, sec)
     curve_obj = curve_dict_for(sec)
 
-    prepay_type = normalize_prepay_type(sec.get("prepay_model"))
+    prepay_type, prepay_rate = prepay_type_and_rate_for_api(sec)
     volatility = resolve_volatility(sec)
+    yb_muni = muni_sync_py_ybprice_rfrswap_shape(sec, curve_obj)
+    yb_sacmbs = structured_agency_cmbs_ybprice_sync_shape(sec, curve_obj)
 
-    payload = {
-        "globalSettings": {
-            "pricingDate": pricing_date,
-            "retrievePPMProjection": True,
-        },
-        "input": [{
-            "identifier": sec["cusip"],
+    if yb_muni:
+        # Match Excel YBPRICE(..., "RFRSwap", ..., "MatrixWSkew", ...) — minimal sync /bond/py body.
+        input_row = {
+            "identifier": yieldbook_security_identifier(sec),
+            "floaterSettings": {},
+            "extraSettings": {
+                "prepayDuration": True,
+                "includePartials": True,
+            },
+            "level": str(bond_py_level_for_request(sec, level_override)),
+            "curve": curve_obj,
+            "settlementDate": pricing_date,
+            "volatility": volatility,
+        }
+        payload = {
+            "globalSettings": {"pricingDate": pricing_date},
+            "input": [input_row],
+        }
+    elif yb_sacmbs:
+        # Excel YBPRICE add-in for structured agency CMBS (CUSIP.cmo, RFRSwap, LMMSOFRFLAT, CPY 0, …).
+        input_row = {
+            "identifier": yieldbook_security_identifier(sec),
+            "floaterSettings": {},
+            "extraSettings": {"includePartials": True},
+            "level": str(bond_py_level_for_request(sec, level_override)),
+            "curve": {"curveType": "SWAP_RFR"},
+            "prepaySettings": {"type": prepay_type, "rate": prepay_rate},
+            "settlementDate": pricing_date,
+            "volatility": volatility,
+        }
+        payload = {
+            "globalSettings": {"pricingDate": pricing_date},
+            "input": [input_row],
+        }
+    else:
+        input_row = {
+            "identifier": yieldbook_security_identifier(sec),
             "idType": "securityIDEntry",
-            "level": str(sec["market_price"]),
+            "level": str(bond_py_level_for_request(sec, level_override)),
             "settlementDate": pricing_date,
             "userTag": sec["cusip"],
             "curve": curve_obj,
@@ -869,12 +1349,37 @@ def run_py(session, token: str, sec: Dict[str, Any]) -> Dict[str, Any]:
                 # Reverse-engineered from YBPRICE partial duration behavior.
                 "includePartials": True,
             },
-        }],
-    }
+        }
+        props = py_calc_props(sec)
+        if props:
+            input_row["props"] = props
 
-    if str(sec.get("prepay_model", "")).strip().lower() == "muni":
+        payload = {
+            "globalSettings": {
+                "pricingDate": pricing_date,
+                "retrievePPMProjection": True,
+            },
+            "input": [input_row],
+        }
+
+    if security_uses_municipal_curve(sec):
         points = sec.get("muni_curve_points", [])
-        if points:
+        if sec.get("yb_user_curve_ref"):
+            print(
+                f"[INFO] {sec['cusip']}: Muni pricing curve=userDefined $ref "
+                f"{sec['yb_user_curve_ref']!r} ({len(points)} pillar(s) uploaded to job-store)."
+            )
+        elif yb_muni:
+            print(
+                f"[INFO] {sec['cusip']}: Muni sync /bond/py = YBPRICE RFRSwap-style "
+                f"(curve={curve_obj!r}, vol={volatility!r}; no prepaySettings in body)."
+            )
+        elif not muni_rest_embed_curve_points_enabled():
+            print(
+                f"[INFO] {sec['cusip']}: Muni REST curve = {curve_obj} "
+                f"(no embedded muni pillars; Excel YBCURVE/YBSW may differ)."
+            )
+        elif points:
             print(
                 f"[INFO] {sec['cusip']}: found {len(points)} muni tenor/par-rate points "
                 f"(YBCURVE Municipal OnTheRun ParRate style). Pricing with {curve_obj}."
@@ -886,6 +1391,13 @@ def run_py(session, token: str, sec: Dict[str, Any]) -> Dict[str, Any]:
             )
         if (os.environ.get("YB_PRINT_MUNI_CURVE_POINTS") or "").strip().lower() in {"1", "true", "yes", "y"}:
             print(f"[INFO] {sec['cusip']} muni_curve_points JSON:\n{muni_curve_points_debug_json(sec)}")
+    elif yb_sacmbs:
+        print(
+            f"[INFO] {sec['cusip']}: Structured Agency CMBS /bond/py = Excel YBPRICE-style "
+            f"(SWAP_RFR-only curve, prepay={prepay_type}/{prepay_rate}, vol={volatility!r}, "
+            f"includePartials; id={yieldbook_security_identifier(sec)!r}).",
+            flush=True,
+        )
 
     url = api_url("bond/py", mode="sync")
     r = session.post(url, json=payload, headers=api_headers(token), timeout=60)
@@ -897,11 +1409,21 @@ def run_py(session, token: str, sec: Dict[str, Any]) -> Dict[str, Any]:
         # Retry once with safest generic settings.
         retry_payload = payload.copy()
         retry_input = dict(payload["input"][0])
-        retry_input["curve"] = {"curveType": "SWAP_RFR", "currency": "USD"}
-        retry_input["prepaySettings"] = {"type": "Model", "rate": 100}
+        retry_input["curve"] = {"curveType": "SWAP_RFR"}
         retry_input["volatility"] = {"type": "Default"}
+        for k in ("prepaySettings", "idType", "userTag", "props"):
+            retry_input.pop(k, None)
+        if yb_muni:
+            retry_input.setdefault("floaterSettings", {})
+            retry_input["extraSettings"] = {"prepayDuration": True, "includePartials": True}
+        else:
+            retry_input["prepaySettings"] = {"type": "Model", "rate": 100}
+            retry_input["curve"] = {"curveType": "SWAP_RFR", "currency": "USD"}
         retry_payload["input"] = [retry_input]
-        retry_payload["globalSettings"] = {"pricingDate": default_pricing_date(), "retrievePPMProjection": True}
+        if yb_muni:
+            retry_payload["globalSettings"] = {"pricingDate": default_pricing_date()}
+        else:
+            retry_payload["globalSettings"] = {"pricingDate": default_pricing_date(), "retrievePPMProjection": True}
 
         rr = session.post(url, json=retry_payload, headers=api_headers(token), timeout=60)
         if not rr.ok:
@@ -922,14 +1444,30 @@ def run_py(session, token: str, sec: Dict[str, Any]) -> Dict[str, Any]:
     max_servicer = (py_obj.get("maxServicer") or {})
     if isinstance(max_servicer, str):
         max_servicer = {"name": max_servicer, "percent": None}
-    return {
-        "forwardYield": (py_obj.get("ForwardYield") or {}).get("Yield")
+    # YBPRICE-style flat ``py`` uses duration / dv01 / yield / convexity (not effective* names).
+    eff_dur = py_obj.get("effectiveDuration")
+    if eff_dur is None:
+        eff_dur = py_obj.get("duration") or py_obj.get("durationToWorstCase")
+    eff_conv = py_obj.get("effectiveConvexity")
+    if eff_conv is None:
+        eff_conv = py_obj.get("convexity")
+    eff_dv01 = py_obj.get("effectiveDV01")
+    if eff_dv01 is None:
+        eff_dv01 = py_obj.get("dv01") or py_obj.get("dv01ToNextCall")
+    flat_yield = py_obj.get("yield") or py_obj.get("yieldToWorst") or py_obj.get("semiAnnualizedYield")
+    fwd_yield = (
+        (py_obj.get("ForwardYield") or {}).get("Yield")
         if isinstance(py_obj.get("ForwardYield"), dict)
-        else get_first_key(py_obj.get("forwardMeasures") or {}, "yield", "Yield"),
-        "bondYield": py_obj.get("yield") or py_obj.get("effectiveYield") or py_obj.get("streetYield"),
-        "effectiveDuration": py_obj.get("effectiveDuration"),
-        "effectiveConvexity": py_obj.get("effectiveConvexity"),
-        "effectiveDV01": py_obj.get("effectiveDV01"),
+        else get_first_key(py_obj.get("forwardMeasures") or {}, "yield", "Yield")
+    )
+    if fwd_yield is None:
+        fwd_yield = flat_yield
+    return {
+        "forwardYield": fwd_yield,
+        "bondYield": flat_yield or py_obj.get("effectiveYield") or py_obj.get("streetYield"),
+        "effectiveDuration": eff_dur,
+        "effectiveConvexity": eff_conv,
+        "effectiveDV01": eff_dv01,
         "dollarDuration": py_obj.get("dollarDuration"),
         "partialDurations": partial_durations,
         "averageLife": get_first_key(py_obj, "effectiveWAL", "EffectiveWAL", "wal", "averageLife"),
@@ -949,18 +1487,18 @@ def run_py(session, token: str, sec: Dict[str, Any]) -> Dict[str, Any]:
 # ---------------------------------------------------------
 def run_scenarios(session, token: str, sec: Dict[str, Any]) -> List[Dict[str, Any]]:
     pricing_date = sec.get("curve_date") or default_pricing_date()
-    prepay_rate = sec.get("prepay_rate")
-    if sub_type_is_treasury(sec.get("sub_type")):
-        if prepay_rate is None:
-            prepay_rate = 0.0
-    elif prepay_rate is None:
-        prepay_rate = 100.0
+    if (
+        security_uses_municipal_curve(sec)
+        and muni_rest_embed_curve_points_enabled()
+        and not (sec.get("muni_curve_points") or [])
+    ):
+        sec["muni_curve_points"] = resolve_muni_curve_points(session, token, sec)
     scen_curve = curve_dict_for(sec)
     scen_volatility = resolve_volatility(sec)
 
     scenarios = []
 
-    prepay_type = normalize_prepay_type(sec.get("prepay_model"))
+    prepay_type, prepay_rate = prepay_type_and_rate_for_api(sec)
     for i, s in enumerate(SHOCKS_BPS, start=1):
         scenarios.append({
             "scenarioID": f"scen{i}",
@@ -982,12 +1520,13 @@ def run_scenarios(session, token: str, sec: Dict[str, Any]) -> List[Dict[str, An
         "scenarios": scenarios,
         "calcInputs": [{
             "userTag": sec["cusip"],
-            "identifier": sec["cusip"],
+            "identifier": yieldbook_security_identifier(sec),
             "idType": "securityIDEntry",
+            **({"props": py_calc_props(sec)} if py_calc_props(sec) else {}),
             "curve": scen_curve,
             "volatility": scen_volatility,
             "settlementInfo": {
-                "level": sec["market_price"],
+                "level": bond_py_level_value(sec),
                 "settlementType": "CUSTOM",
                 "settlementDate": pricing_date,
                 "prepay": {
@@ -1014,30 +1553,52 @@ def run_scenarios(session, token: str, sec: Dict[str, Any]) -> List[Dict[str, An
     r = session.post(url, json=payload, headers=api_headers(token), timeout=120)
     if not r.ok:
         print(f"[ERROR] /bond/scenario-calc failed for {sec['cusip']} HTTP {r.status_code}")
-        print(f"[ERROR] pricingDate={pricing_date}, curve={scen_curve}, prepayRate={prepay_rate}")
+        print(f"[ERROR] pricingDate={pricing_date}, curve={scen_curve}, prepayType={prepay_type}, prepayRate={prepay_rate}")
         print(f"[ERROR] response: {r.text[:2000]}")
-    r.raise_for_status()
+        return []
     data = r.json()
     request_id = data.get("requestId")
     if not request_id:
-        raise RuntimeError(f"No requestId returned from scenario-calc: {data}")
+        print(f"[WARN] scenario-calc: no requestId for {sec['cusip']}: {data}")
+        return []
 
     results_url = api_url(f"/results/{request_id}", mode=None)
-    for _ in range(24):
+    last_bad_status: Optional[int] = None
+    for attempt in range(24):
         rr = session.get(results_url, headers=api_headers(token), timeout=30)
         if rr.status_code == 404:
             time.sleep(2)
             continue
-        rr.raise_for_status()
-        jr = rr.json()
-        if jr.get("meta", {}).get("status") == "DONE":
+        if not rr.ok:
+            if rr.status_code != last_bad_status:
+                print(
+                    f"[WARN] scenario results GET {request_id} HTTP {rr.status_code} "
+                    f"for {sec['cusip']} (will retry): {(rr.text or '')[:300]}"
+                )
+                last_bad_status = rr.status_code
+            time.sleep(2)
+            continue
+        try:
+            jr = rr.json()
+        except Exception:
+            time.sleep(2)
+            continue
+        meta = jr.get("meta") or {}
+        if meta.get("status") == "DONE":
             results = jr.get("results", [])
             if not results:
                 return []
             raw_h = (results[0].get("scenario") or {}).get("horizon", [])
             return normalize_scenario_horizon(raw_h)
+        if meta.get("status") == "ERROR":
+            print(
+                f"[WARN] scenario results ERROR for {sec['cusip']} request {request_id}: "
+                f"{jr.get('errors') or meta}"
+            )
+            return []
         time.sleep(2)
-    raise RuntimeError(f"Timed out waiting for scenario results for {sec['cusip']}")
+    print(f"[WARN] Timed out waiting for scenario results for {sec['cusip']} ({request_id})")
+    return []
 
 
 def pick_metric(h: Dict[str, Any], *keys: str) -> Any:
@@ -1205,12 +1766,15 @@ def fetch_partial_durations_by_keywords(session, token: str, sec: Dict[str, Any]
     Try YBPRICE-style keyword request for partial durations via req/bond/py.
     """
     pricing_date = sec.get("curve_date") or default_pricing_date()
-    if sub_type_is_treasury(sec.get("sub_type")):
-        prepay_rate = sec.get("prepay_rate") if sec.get("prepay_rate") is not None else 0.0
-    else:
-        prepay_rate = sec.get("prepay_rate") or 100.0
+    if (
+        security_uses_municipal_curve(sec)
+        and muni_rest_embed_curve_points_enabled()
+        and not (sec.get("muni_curve_points") or [])
+    ):
+        sec["muni_curve_points"] = resolve_muni_curve_points(session, token, sec)
     curve_obj = curve_dict_for(sec)
-    prepay_type = normalize_prepay_type(sec.get("prepay_model"))
+    prepay_type, prepay_rate = prepay_type_and_rate_for_api(sec)
+    scen_vol = resolve_volatility(sec)
 
     keywords = [
         "PartialDuration1year",
@@ -1229,19 +1793,24 @@ def fetch_partial_durations_by_keywords(session, token: str, sec: Dict[str, Any]
         "PDUR7",
     ]
 
-    body = {
-        "keywords": keywords,
-        "globalSettings": {"pricingDate": pricing_date},
-        "pyCalcInputs": [{
-            "identifier": sec["cusip"],
+    py_in: Dict[str, Any] = {
+            "identifier": yieldbook_security_identifier(sec),
             "idType": "securityIDEntry",
-            "level": str(sec["market_price"]),
+            "level": str(bond_py_level_value(sec)),
             "userTag": sec["cusip"],
             "curve": curve_obj,
             "prepaySettings": {"type": prepay_type, "rate": prepay_rate},
-            "volatility": {"type": "Single", "rate": 0},
+            "volatility": scen_vol,
             "extraSettings": {"optionModel": "OASEDUR"},
-        }],
+    }
+    props = py_calc_props(sec)
+    if props:
+        py_in["props"] = props
+
+    body = {
+        "keywords": keywords,
+        "globalSettings": {"pricingDate": pricing_date},
+        "pyCalcInputs": [py_in],
     }
 
     r = session.post(api_url("bond/py", mode="req"), json=body, headers=api_headers(token), timeout=60)
@@ -1288,7 +1857,7 @@ def run_indic(session, token: str, sec: Dict[str, Any]) -> Dict[str, Any]:
     def _request_indic(use_keywords: bool) -> Dict[str, Any]:
         payload = {
             "identifierInfos": [{
-                "identifier": sec["cusip"],
+                "identifier": yieldbook_security_identifier(sec),
                 "idType": "securityIDEntry",
             }],
             "globalSettings": {
@@ -1361,6 +1930,13 @@ def run_indic(session, token: str, sec: Dict[str, Any]) -> Dict[str, Any]:
         indic_full = _request_indic(use_keywords=False)
         if indic_full:
             extracted = _extract_values(indic_full)
+    elif extracted.get("PPHistCPRLife") is None:
+        # Keyword-filtered /bond/indic often omits dataPPMHistoryList; Life CPR lives in CPR history (month Life).
+        indic_full = _request_indic(use_keywords=False)
+        if indic_full:
+            ext_full = _extract_values(indic_full)
+            if ext_full.get("PPHistCPRLife") is not None:
+                extracted["PPHistCPRLife"] = ext_full["PPHistCPRLife"]
 
     return extracted
 
@@ -1372,34 +1948,28 @@ def run_py_keyword_measures(session, token: str, sec: Dict[str, Any]) -> Dict[st
     """
     pricing_date = sec.get("curve_date") or default_pricing_date()
     sub_type = (sec.get("sub_type") or "").strip()
-    prepay_rate = sec.get("prepay_rate")
-    if sub_type_is_treasury(sec.get("sub_type")):
-        if prepay_rate is None:
-            prepay_rate = 0.0
-    elif prepay_rate is None:
-        prepay_rate = 100.0
+    prepay_type, prepay_rate = prepay_type_and_rate_for_api(sec)
     # Optional override for Agency MBS ARM benchmarking; default is to respect input prepay rate.
     arm_force_raw = (os.environ.get("YB_ARM_FORCE_PREPAY_RATE") or "").strip()
     if sub_type.lower() == "agency mbs arm" and arm_force_raw:
         arm_force = parse_number(arm_force_raw)
         if arm_force is not None:
             prepay_rate = float(arm_force)
-    if str(sec.get("prepay_model", "")).strip().lower() == "muni":
+    if security_uses_municipal_curve(sec) and muni_rest_embed_curve_points_enabled():
         sec["muni_curve_points"] = resolve_muni_curve_points(session, token, sec)
     curve_obj = curve_dict_for(sec)
-    prepay_type = normalize_prepay_type(sec.get("prepay_model"))
 
     def _submit(volatility: Dict[str, Any]) -> Dict[str, Any]:
         body = {
             "keywords": ["EffectiveWAL", "LongTermCPR", "OAS", "ZSpread"],
             "globalSettings": {"pricingDate": pricing_date},
             "pyCalcInputs": [{
-                "identifier": sec["cusip"],
+                "identifier": yieldbook_security_identifier(sec),
                 "idType": "securityIDEntry",
-                "level": str(sec["market_price"]),
+                "level": str(bond_py_level_value(sec)),
                 "settlementDate": pricing_date,
                 # REST does not expose a direct securitySubType field, use props to pass subtype context.
-                "props": {"subType": sub_type} if sub_type else {},
+                "props": py_calc_props(sec) or {"subType": sub_type} if sub_type else {},
                 "curve": curve_obj,
                 "prepaySettings": {"type": prepay_type, "rate": prepay_rate},
                 "volatility": volatility,
@@ -1444,6 +2014,13 @@ def run_py_keyword_measures(session, token: str, sec: Dict[str, Any]) -> Dict[st
 def run_full_analysis_for_security(session, token: str, sec: Dict[str, Any]) -> Dict[str, Any]:
     """One security: PY + keyword + scenario + indic; merged output row for OUTPUT_COLUMNS."""
     py = run_py(session, token, sec)
+    book_lvl = parse_number(sec.get("book_price"))
+    py_book: Optional[Dict[str, Any]] = None
+    if book_lvl is not None and not pd.isna(book_lvl):
+        try:
+            py_book = run_py(session, token, sec, level_override=float(book_lvl))
+        except Exception as e:
+            print(f"[WARN] {sec['cusip']}: Prospective_Yield book-price /bond/py skipped: {type(e).__name__}: {e}")
     py_kw = run_py_keyword_measures(session, token, sec)
     scen = run_scenarios(session, token, sec)
     indic = run_indic(session, token, sec)
@@ -1453,6 +2030,7 @@ def run_full_analysis_for_security(session, token: str, sec: Dict[str, Any]) -> 
         "Sub Type": sec.get("sub_type"),
 
         "Forward_Yield": resolve_forward_yield_column(py, sec.get("sub_type")),
+        "Prospective_Yield": resolve_prospective_yield_from_py(py_book, sec.get("sub_type")),
         "Effective_Duration": py.get("effectiveDuration"),
         "Effective_Convexity": py.get("effectiveConvexity"),
         "Effective_DV01": py.get("effectiveDV01"),
