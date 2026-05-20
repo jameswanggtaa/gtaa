@@ -22,6 +22,7 @@ from agency_cmo_benchmark import (
     build_api_row,
     compare_numeric,
     extract_excel_benchmark_row,
+    servicer_benchmark_fields_match,
 )
 
 
@@ -41,6 +42,9 @@ class BenchmarkRunConfig:
     force_prepay_rate: Optional[float] = None
     # Optional: process only the first N securities after load (before limit_env).
     securities_head: Optional[int] = None
+    # Muni benchmarks: SWAP_RFR curve object only — no muni_ybsw pillars / curveSpots.
+    # Sets YB_MUNI_INCLUDE_CURVE_POINTS=0; sync /bond/py uses YBPRICE RFRSwap-style body; Excel YBCURVE diverges.
+    muni_rfr_swap_curve_only: bool = False
 
 
 def load_portfolio_securities(df: pd.DataFrame) -> List[Dict[str, Any]]:
@@ -49,6 +53,13 @@ def load_portfolio_securities(df: pd.DataFrame) -> List[Dict[str, Any]]:
     cusip_col = nsa.find_col(cols, "CUSIP", "CUSIPs")
     sub_col = nsa.find_col(cols, "Sub Type", "Sub_Type", "Subtype")
     price_col = nsa.find_col(cols, "PRICE (Mkt)", "Market_price", "Market Price", "Market Price ")
+    book_price_col = nsa.find_col(
+        cols,
+        "MTB_BOOK PRICE (Clean)",
+        "MTB_BOOK_PRICE",
+        "MTB Book Price (Clean)",
+        "Book Price",
+    )
     coupon_col = nsa.find_col(cols, "Coupon")
     maturity_col = nsa.find_col(cols, "Maturity Date", "Maturity_Date")
     curve_date_col = nsa.find_col(cols, "Curve Date", "Curve_Date")
@@ -83,7 +94,9 @@ def load_portfolio_securities(df: pd.DataFrame) -> List[Dict[str, Any]]:
             "sub_type": sub_type,
             "coupon": nsa.parse_number(r[coupon_col]) if coupon_col else None,
             "maturity": nsa.normalize_date(r[maturity_col]) if maturity_col else None,
-            "market_price": nsa.parse_number(r[price_col]) or r[price_col],
+            # Do not fall back to raw cell: pandas NaN becomes str "nan" and breaks /bond/py level.
+            "market_price": nsa.parse_number(r[price_col]),
+            "book_price": nsa.parse_number(r[book_price_col]) if book_price_col else None,
             "curve_date": nsa.normalize_date(r[curve_date_col]) if curve_date_col else nsa.default_pricing_date(),
             "prepay_model": prepay_model,
             "prepay_rate": prepay_rate_val,
@@ -129,8 +142,48 @@ def run_benchmark(cfg: BenchmarkRunConfig) -> None:
 
     securities = load_portfolio_securities(df)
 
+    if cfg.muni_rfr_swap_curve_only:
+        os.environ["YB_MUNI_INCLUDE_CURVE_POINTS"] = "0"
+        print(
+            "[INFO] muni_rfr_swap_curve_only: REST muni curve = curveType only (e.g. SWAP_RFR; "
+            "no embedded pillars; sync /bond/py matches YBPRICE RFRSwap-style body; Excel YBCURVE diverges).",
+            flush=True,
+        )
+        if (os.environ.get("YB_MUNI_JOB_STORE") or "").strip().lower() in {"1", "true", "yes", "y"}:
+            print(
+                "[WARN] YB_MUNI_JOB_STORE is set: pricing will use uploaded userDefined $ref "
+                "if upload succeeds, not plain SWAP_RFR. Unset YB_MUNI_JOB_STORE for RFR-disc-only.",
+                flush=True,
+            )
+
+    vol_single_from_curve = (os.environ.get("YB_MUNI_VOL_SINGLE_FROM_CURVE") or "").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+        "y",
+    }
+    if cfg.muni_rfr_swap_curve_only and vol_single_from_curve:
+        muni_for_vol = nsa.read_muni_curve_points(path)
+        if muni_for_vol:
+            for s in securities:
+                if str(s.get("prepay_model", "")).strip().lower() == "muni":
+                    s["muni_curve_points"] = list(muni_for_vol)
+            print(
+                f"[INFO] YB_MUNI_VOL_SINGLE_FROM_CURVE: loaded {len(muni_for_vol)} muni pillar(s) "
+                "for volatility Single.rate only (REST curve stays SWAP_RFR-only).",
+                flush=True,
+            )
+        else:
+            print(
+                "[WARN] YB_MUNI_VOL_SINGLE_FROM_CURVE set but no muni sidecar curve "
+                "(muni_ybsw_curve.csv / muni_ybcurve.csv beside input); vol falls back to MatrixWSkew rules.",
+                flush=True,
+            )
+
     # YBSW(MUNI) tenor/rate columns: Excel B/E or optional muni_ybsw_curve.csv beside input file
-    muni_pts = nsa.read_muni_curve_points(path)
+    muni_pts: List[Dict[str, Any]] = []
+    if not cfg.muni_rfr_swap_curve_only:
+        muni_pts = nsa.read_muni_curve_points(path)
     if muni_pts:
         for s in securities:
             if str(s.get("prepay_model", "")).strip().lower() == "muni":
@@ -160,6 +213,7 @@ def run_benchmark(cfg: BenchmarkRunConfig) -> None:
 
     auth_session = nsa.make_http_session()
     token = nsa.get_access_token(auth_session)
+    nsa.prepare_muni_job_store_curve_ref(auth_session, token, securities)
 
     workers = nsa.parallel_worker_count()
     if workers > 1:
@@ -207,7 +261,7 @@ def run_benchmark(cfg: BenchmarkRunConfig) -> None:
             if ek in {"MaxServicerName", "MaxServicerPercent"}:
                 es = excel_b.get(ek)
                 as_ = api_row.get(ak)
-                match = (es or "") == (as_ or "") if es is not None or as_ is not None else True
+                match = servicer_benchmark_fields_match(es, as_)
                 compare_rows.append({
                     "CUSIP": cusip,
                     "field": ek,
@@ -217,7 +271,7 @@ def run_benchmark(cfg: BenchmarkRunConfig) -> None:
                     "status": "ok" if match else "mismatch",
                 })
             else:
-                diff, status = compare_numeric(ev, av)
+                diff, status = compare_numeric(ev, av, field=ek)
                 compare_rows.append({
                     "CUSIP": cusip,
                     "field": ek,
@@ -234,7 +288,11 @@ def run_benchmark(cfg: BenchmarkRunConfig) -> None:
     print(f"Wrote {len(out_df)} rows to {out_path}")
 
     cmp_df = pd.DataFrame(compare_rows)
-    cmp_path = os.path.join(base, cfg.out_compare)
+    cmp_alt = (os.environ.get("YB_BENCHMARK_COMPARE_OUT") or "").strip()
+    if cmp_alt:
+        cmp_path = cmp_alt if os.path.isabs(cmp_alt) else os.path.join(base, cmp_alt)
+    else:
+        cmp_path = os.path.join(base, cfg.out_compare)
     cmp_df.to_csv(cmp_path, index=False, float_format="%.6f")
     print(f"Wrote {len(cmp_df)} comparisons to {cmp_path}")
 
