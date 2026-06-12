@@ -1,0 +1,2301 @@
+MUNI 
+Excel formula: 
+Excel: 
+=YBPRICE($C2848,$P2848&"d",$R2848,"Yield",$V2848,$R2848,"Single","MatrixWSkew","",$T2848,"",,'Muni Rates'!$E$1)
+
+
+
+
+
+=YBPRICE("442403KZ3",100.16118,2026-04-30,"yield","RFRSwap",2026-04-30,"MatrixWSkew","MatrixWSkew","",100,"PDUR7",,)
+{
+  "input": [
+    {
+      "identifier": "442403KZ3",
+      "floaterSettings": {},
+      "extraSettings": {
+        "includePartials": true
+      },
+      "level": "100.16118",
+      "curve": {
+        "curveType": "SWAP_RFR"
+      },
+      "settlementDate": "2026-04-30",
+      "volatility": {
+        "type": "MatrixWSkew"
+      }
+    }
+  ],
+  "globalSettings": {
+    "pricingDate": "2026-04-30"
+  }
+}
+
+
+{
+  "meta": {
+    "status": "DONE",
+    "requestId": "R-749190866",
+    "timeStamp": "2026-06-11T12:16:28Z",
+    "responseType": "PY_CALC",
+    "resultsStatus": "ALL"
+  },
+  "results": [
+    {
+      "py": {
+        "oas": -210.9796,
+        "wal": 0.164384,
+        "dv01": 0.001626329,
+        "isin": "US442403KZ38",
+        "cusip": "442403KZ3",
+        "price": 100.16118,
+        "yield": 3.96879,
+        "ticker": "M.TX",
+        "cdYield": 3.902644,
+        "pyLevel": "100.16118",
+        "zSpread": -210.97969,
+        "duration": 0.1607,
+        "recovery": 37.1,
+        "ziSpread": 90.532168,
+        "znSpread": 20.643867,
+        "assetSwap": -182.867,
+        "benchmark": "US 4.125 05/31",
+        "convexity": 0.001,
+        "curveDate": "2026-04-30",
+        "curveType": "RFRSwap",
+        "fullPrice": 101.20284667,
+        "securityID": "442403KZ",
+        "spreadDV01": 0.001645208,
+        "tsyCurveID": "UMUq0430",
+        "volatility": 20.9155,
+        "accruedDays": 75,
+        "description": "HOUSTON TEX INDPT SCH DIST",
+        "grossSpread": 30.8719,
+        "optionValue": 0.3879,
+        "pricingDate": "2026-04-30",
+        "swapCurveID": "XXXq430",
+        "currentYield": 4.992,
+        "effectiveWAL": 0.1639,
+        "maturityDate": "2031-02-15",
+        "nextCallDate": "2026-05-30",
+        "securityType": "MUNIFIX",
+        "volModelType": "Single",
+        "yieldToWorst": 3.029401,
+        "convexityCost": -0.0001,
+        "currentCoupon": 5,
+        "discountYield": 0,
+        "effectiveCV01": 0.000007246,
+        "effectiveDV01": 0.001688123,
+        "muniCurveType": "NA",
+        "walToNextCall": 0.082192,
+        "worstCallDate": "2026-05-30",
+        "dv01ToNextCall": 0.000831,
+        "effectiveYield": 1.5174,
+        "settlementDate": "2026-04-30",
+        "spreadDuration": 0.162565,
+        "walToWorstCall": 0.082192,
+        "zSpreadToWorst": -78.767,
+        "accruedInterest": 1.04166667,
+        "annualizedYield": 4.008,
+        "assetSwapSpread": 25.245,
+        "compoundingFreq": 2,
+        "convexityEffect": 0.0001,
+        "dv01ToWorstCall": 0.000831,
+        "spreadConvexity": 0.001117,
+        "yearsToMaturity": 0.1644,
+        "yieldToNextCall": 3.029401,
+        "ziWorstCallDate": "2026-05-30",
+        "znWorstCallDate": "2026-05-30",
+        "assetSwapToLibor": {
+          "type": "PAR",
+          "value": -182.8674
+        },
+        "economicExposure": 101.202847,
+        "macaulayDuration": 0.1639,
+        "spreadToActCurve": 87.879,
+        "spreadToTsyCurve": 87.879,
+        "yearsToWorstCall": 0.083,
+        "yieldCurveMargin": -210.9797,
+        "yieldToWorstCall": 3.029401,
+        "effectiveDuration": 0.166805908,
+        "macaulayConvexity": 0.0269,
+        "spreadToBenchmark": 137.879,
+        "spreadToSwapCurve": 160.1919,
+        "spreadToWorstCall": -6,
+        "durationToNextCall": 0.0821,
+        "effectiveConvexity": 0.000716021,
+        "ffndSpreadDuration": 0,
+        "optionModelCurveID": "XXXq430",
+        "yieldCurveDuration": 0.1668,
+        "ziSpreadToNextCall": -4.142,
+        "znSpreadToNextCall": -78.767,
+        "benchmarkToNextCall": "US  4.0 05/28",
+        "durationToWorstCall": 0.0821,
+        "durationToWorstCase": 0.08209,
+        "indexSpreadDuration": 0,
+        "semiAnnualizedYield": 3.96879,
+        "ziSpreadToWorstCall": -4.142,
+        "znSpreadToWorstCall": -78.767,
+        "benchmarkToWorstCall": "US  4.0 05/28",
+        "spreadToRFRSwapCurve": 30.8719,
+        "yearsToFinalMaturity": 0.164,
+        "gnmafnmaSpreadDuration": 0,
+        "spreadDurationTreasury": 0.162565,
+        "dataPartialDurationList": [
+          {
+            "partialDV01": 0.001688123,
+            "partialDuration": 0.1668,
+            "partialDurationYear": 1,
+            "partialDurationPriceUp": 100.119001,
+            "partialDurationPriceDown": 100.203407
+          },
+          {
+            "partialDV01": 0,
+            "partialDuration": 0,
+            "partialDurationYear": 2,
+            "partialDurationPriceUp": 100.161181,
+            "partialDurationPriceDown": 100.161181
+          },
+          {
+            "partialDV01": 0,
+            "partialDuration": 0,
+            "partialDurationYear": 3,
+            "partialDurationPriceUp": 100.161181,
+            "partialDurationPriceDown": 100.161181
+          },
+          {
+            "partialDV01": 0,
+            "partialDuration": 0,
+            "partialDurationYear": 5,
+            "partialDurationPriceUp": 100.161181,
+            "partialDurationPriceDown": 100.161181
+          },
+          {
+            "partialDV01": 0,
+            "partialDuration": 0,
+            "partialDurationYear": 10,
+            "partialDurationPriceUp": 100.161181,
+            "partialDurationPriceDown": 100.161181
+          },
+          {
+            "partialDV01": 0,
+            "partialDuration": 0,
+            "partialDurationYear": 20,
+            "partialDurationPriceUp": 100.161181,
+            "partialDurationPriceDown": 100.161181
+          },
+          {
+            "partialDV01": 0,
+            "partialDuration": 0,
+            "partialDurationYear": 30,
+            "partialDurationPriceUp": 100.161181,
+            "partialDurationPriceDown": 100.161181
+          }
+        ],
+        "fundedEffectiveDuration": 0.166806,
+        "effectiveDurationPriceUp": 101.160667,
+        "fundedEffectiveConvexity": 0.000716,
+        "effectiveDurationPriceDown": 101.245074,
+        "spreadToTsyCurveToNextCall": -6.0599,
+        "spreadToActCurveToWorstCall": -6.0599,
+        "spreadToBenchmarkToNextCall": 56.9401,
+        "spreadToSwapCurveToNextCall": -63.067,
+        "spreadToTsyCurveToWorstCall": -6.0599,
+        "currentCouponSpreadConvexity": 0,
+        "spreadToBenchmarkToWorstCall": 56.9401,
+        "spreadToSwapCurveToWorstCall": -63.067,
+        "currentCouponSpreadSensitivity": 0
+      },
+      "securityID": "442403KZ"
+    }
+  ]
+}
+
+
+Shock Scenarios: 
+=YBSCEN("442403KZ3",100.16118,"2026-04-30","EffectiveDurationAtHorizon","RFRSwap","2026-04-30","MatrixWSkew","MatrixWSkew","Muni",100,0,0,"Immediate","ParShift|N",-200,"OAS Change",0,100,"EFF",,,,"Default",,,,"Default",,,,)
+{
+  "input": [
+    {
+      "identifier": "442403KZ3",
+      "horizonInfo": [
+        {
+          "prepay": {
+            "rate": "100"
+          },
+          "level": "0",
+          "scenarioRef": {
+            "$ref": "/sys/scenario/Par/-200?timing=Immediate&reinvestmentRate=Default&swapSpreadConst=false"
+          }
+        }
+      ],
+      "curve": {
+        "curveType": "SWAP_RFR"
+      },
+      "horizonPYMethod": "OAS Change",
+      "settlementInfo": {
+        "prepay": {
+          "rate": "100",
+          "type": "Muni"
+        },
+        "level": "100.16118",
+        "settlementDate": "2026-04-30"
+      },
+      "volatility": {
+        "type": "MatrixWSkew"
+      },
+      "assumeCall": false
+    }
+  ],
+  "globalSettings": {
+    "pricingDate": "2026-04-30",
+    "horizonDays": "0",
+    "horizonMonths": "0",
+    "calcHorizonEffectiveMeasures": true
+  }
+}
+{
+  "meta": {
+    "status": "DONE",
+    "requestId": "R-749198695",
+    "timeStamp": "2026-06-11T12:40:08Z",
+    "responseType": "SCENARIO_CALC",
+    "resultsStatus": "ALL"
+  },
+  "results": [
+    {
+      "isin": "US442403KZ38",
+      "cusip": "442403KZ3",
+      "ticker": "M.TX",
+      "scenario": {
+        "horizon": [
+          {
+            "oas": -210.9796,
+            "wal": 0.1639,
+            "price": 100.76585,
+            "yield": 0.3212,
+            "balance": 1,
+            "pylevel": "0.000000",
+            "duration": 0.1636,
+            "fullPrice": 101.807517,
+            "returnCode": 0,
+            "scenarioID": "/sys/scenario/Par/-200/1",
+            "spreadDV01": 0.001685391,
+            "volatility": 20.9155,
+            "actualPrice": 100.766,
+            "grossSpread": 21.5975,
+            "horizonDays": 0,
+            "marketValue": 101.807517,
+            "optionValue": 0.3902,
+            "totalReturn": 0.59748356,
+            "yieldToCall": -4.1158,
+            "dollarReturn": 0.60467037,
+            "effectiveWAL": 0.164,
+            "convexityCost": -0.0009,
+            "effectiveCV01": -0.002011,
+            "effectiveDV01": 0.001461611,
+            "nominalSpread": 21.5975,
+            "worstCallDate": "2026-05-30",
+            "effectiveYield": -2.0046,
+            "interestReturn": 0,
+            "settlementDate": "2026-04-30",
+            "spreadDuration": 0.165547,
+            "accruedInterest": 1.041667,
+            "actualFullPrice": 101.808,
+            "horizonPYMethod": "OAS Change",
+            "interestPayment": 0,
+            "principalReturn": 0.59748356,
+            "underlyingPrice": 0,
+            "principalPayment": 0,
+            "reinvestmentRate": 1.09,
+            "yieldCurveMargin": -210.9805,
+            "yieldToWorstCall": -4.1158,
+            "effectiveCallDate": "2026-05-30",
+            "effectiveDuration": 0.1436,
+            "effectiveConvexity": -0.1976,
+            "reinvestmentAmount": 0,
+            "actualAccruedInterest": 1.042,
+            "horizonDurationToWorst": 0.085
+          }
+        ],
+        "settlement": {
+          "oas": -210.9796,
+          "psa": 0,
+          "wal": 0.1639,
+          "price": 100.16118,
+          "yield": 3.9688,
+          "fullPrice": 101.202847,
+          "volatility": 20.9155,
+          "grossSpread": 30.8719,
+          "optionValue": 0.3879,
+          "pricingDate": "2026-04-30",
+          "forwardYield": 0,
+          "staticSpread": 0,
+          "effectiveDV01": 0.001688123,
+          "nominalSpread": 0,
+          "settlementDate": "2026-04-30",
+          "accruedInterest": 1.041667,
+          "reinvestmentRate": 3.09,
+          "yieldCurveMargin": 0,
+          "effectiveDuration": 0.1668,
+          "effectiveConvexity": 0.0008
+        }
+      },
+      "returnCode": 0,
+      "securityID": "442403KZ",
+      "description": "HOUSTON TEX INDPT SCH DIST",
+      "maturityDate": "2031-02-15",
+      "securityType": "MUNIFIX",
+      "currentCoupon": 5
+    }
+  ]
+}
+
+
+MBS ARM: 
+
+=YBSCEN("31288QWN6",99.5990104,"2026-04-30","EffectiveDurationAtHorizon","RFRSwap","2026-04-30","LMMSOFRFLAT","","Model",100,0,0,"Immediate","ParShift|N",-200,"OAS Change",0,100,"EFF",,,,"Default",,,,"Default",,,,)
+0.91270	0.00941	3.09617	1.53270	0.01561	1.90580	2.59490	0.02532	-2.37068	2.93980	0.02790	-5.03322
+
+{
+  "input": [
+    {
+      "identifier": "31288QWN6",
+      "horizonInfo": [
+        {
+          "prepay": {
+            "rate": "100"
+          },
+          "level": "0",
+          "scenarioRef": {
+            "$ref": "/sys/scenario/Par/-200?timing=Immediate&reinvestmentRate=Default&swapSpreadConst=false"
+          }
+        }
+      ],
+      "curve": {
+        "curveType": "SWAP_RFR"
+      },
+      "horizonPYMethod": "OAS Change",
+      "settlementInfo": {
+        "prepay": {
+          "rate": "100",
+          "type": "Model"
+        },
+        "level": "99.5990104",
+        "settlementDate": "2026-04-30"
+      },
+      "volatility": {
+        "type": "LMMSOFRFLAT"
+      },
+      "assumeCall": false
+    }
+  ],
+  "globalSettings": {
+    "pricingDate": "2026-04-30",
+    "horizonDays": "0",
+    "horizonMonths": "0",
+    "calcHorizonEffectiveMeasures": true
+  }
+}
+
+{
+  "meta": {
+    "status": "DONE",
+    "requestId": "R-749206882",
+    "timeStamp": "2026-06-11T12:59:02Z",
+    "responseType": "SCENARIO_CALC",
+    "resultsStatus": "ALL"
+  },
+  "results": [
+    {
+      "isin": "US31288QWN68",
+      "cusip": "31288QWN6",
+      "ticker": "F841553",
+      "scenario": {
+        "horizon": [
+          {
+            "cpr": 43.4229,
+            "fpp": 20260615,
+            "oas": 89.7933,
+            "psa": 723.7155,
+            "rho": 0,
+            "wac": {
+              "value": 0
+            },
+            "wal": 1.8662,
+            "delta": 0,
+            "gamma": 0,
+            "price": 102.69518,
+            "theta": 0,
+            "yield": 2.5453,
+            "balance": 1,
+            "pylevel": "0.000000",
+            "duration": 1.759,
+            "fullPrice": 103.049181,
+            "forwardWAL": 1.994238,
+            "returnCode": 0,
+            "scenarioID": "/sys/scenario/Par/-200/1",
+            "spreadDV01": 0.022229304,
+            "volatility": 0,
+            "actualPrice": 102.695,
+            "grossSpread": 84.389,
+            "horizonDays": 0,
+            "marketValue": 103.049181,
+            "totalReturn": 3.09762529,
+            "dollarReturn": 3.09616976,
+            "effectiveWAL": 2.407,
+            "forwardYield": 2.687463,
+            "staticSpread": 77.1068,
+            "convexityCost": 0.1236,
+            "effectiveCV01": -0.001261,
+            "effectiveDV01": 0.009405471,
+            "nominalSpread": 84.389,
+            "scenarioYield": 4.3169,
+            "discountMargin": 84.389,
+            "effectiveYield": 4.8908,
+            "interestReturn": 0,
+            "settlementDate": "2026-04-30",
+            "spreadDuration": 2.157155,
+            "taxAdjustedOAS": 0,
+            "accruedInterest": 0.354001,
+            "actualFullPrice": 103.049,
+            "dataPpmProjList": [
+              {
+                "oneYear": 45.6673,
+                "longTerm": 43.4229,
+                "oneMonth": 45.409,
+                "sixMonth": 46.053,
+                "prepayType": "CPR",
+                "threeMonth": 46.85
+              },
+              {
+                "longTerm": 723.7155,
+                "prepayType": "PSA"
+              },
+              {
+                "oneYear": 45.0194,
+                "longTerm": 40.9108,
+                "oneMonth": 45.234,
+                "sixMonth": 45.716,
+                "prepayType": "FwdCPR",
+                "threeMonth": 46.625
+              }
+            ],
+            "horizonPYMethod": "OAS Change",
+            "interestPayment": 0,
+            "principalReturn": 3.09762529,
+            "underlyingPrice": 0,
+            "principalPayment": 0,
+            "reinvestmentRate": 1.676192,
+            "taxAdjustedYield": 0,
+            "yieldCurveMargin": 89.9168,
+            "effectiveCallDate": "0",
+            "effectiveDuration": 0.9127,
+            "effectiveConvexity": -0.1223,
+            "moatscurrentCoupon": 3.439,
+            "reinvestmentAmount": 0,
+            "actualAccruedInterest": 0.354,
+            "scenarioCashFlowYield": 0,
+            "horizonDurationToWorst": 0,
+            "lastPrincipalPaymentDate": "2053-04-15",
+            "firstPrincipalPaymentDate": "2026-06-15",
+            "taxAdjustedEffectiveDuration": 0
+          }
+        ],
+        "settlement": {
+          "oas": 89.7933,
+          "psa": 399.8968,
+          "wal": 3.4681,
+          "price": 99.5990104,
+          "yield": 4.7965,
+          "fullPrice": 99.953011,
+          "modelCode": 2501,
+          "volatility": 0,
+          "grossSpread": 102.9097,
+          "optionValue": 0,
+          "pricingDate": "2026-04-30",
+          "forwardYield": 4.933495,
+          "staticSpread": 97.8848,
+          "effectiveDV01": 0.021787915,
+          "nominalSpread": 0,
+          "effectiveYield": 0,
+          "settlementDate": "2026-04-30",
+          "accruedInterest": 0.354001,
+          "reinvestmentRate": 3.676192,
+          "settleDateFactor": 0.7222906,
+          "yieldCurveMargin": 110.9848,
+          "effectiveDuration": 2.1798,
+          "effectiveConvexity": -0.4251
+        }
+      },
+      "className": "POOL",
+      "returnCode": 0,
+      "securityID": "31288QWN",
+      "description": "F841553 POOL",
+      "maturityDate": "2053-02-01",
+      "securityType": "CMO",
+      "currentCoupon": 4.378723
+    }
+  ]
+}
+
+=YBINDIC("31288QWN",Factor)
+0.6916	9.2295	5.0022	44.0000	370111.1562	#SPILL!	#SPILL!
+{
+  "input": [
+    {
+      "identifier": "31288QWN"
+    }
+  ]
+}
+
+{
+  "meta": {
+    "status": "DONE",
+    "requestId": "R-749210300",
+    "timeStamp": "2026-06-11T13:07:36Z",
+    "responseType": "BOND_INDIC",
+    "resultsStatus": "ALL"
+  },
+  "results": [
+    {
+      "isin": "US31288QWN68",
+      "cusip": "31288QWN6",
+      "indic": {
+        "deal": {
+          "type": "0",
+          "balance": 19.95247699,
+          "ioBalance": 0,
+          "iioBalance": 0,
+          "pricingDate": "2023-03-01",
+          "dealAssetType": "ARM Pool",
+          "numberOfGroups": 1,
+          "originalAmount": 28.85049172,
+          "notionalBalance": 0,
+          "numberOfClasses": 1,
+          "originalIOBalance": 0,
+          "originalIIOBalance": 0,
+          "originalNotionalBalance": 0
+        },
+        "figi": "BBG01G2NQT44",
+        "isin": "US31288QWN68",
+        "cusip": "31288QWN6",
+        "factor": 0.6915818691,
+        "source": "MTGDB",
+        "ticker": "F841553",
+        "country": "US",
+        "putFlag": false,
+        "callFlag": false,
+        "cobsCode": "NA",
+        "country2": "US",
+        "country3": "USA",
+        "currency": "USD",
+        "dayCount": "30/360",
+        "glicCode": "NA",
+        "leverage": 0,
+        "poolCode": "FH8C",
+        "sinkFlag": false,
+        "className": "POOL",
+        "cmaTicker": "N/A",
+        "datedDate": "2023-03-01",
+        "groupName": "0",
+        "indexList": [
+          {
+            "value": "SOFR1C",
+            "dealIndexFlag": true
+          }
+        ],
+        "lifeFloor": 0,
+        "loanGroup": 0,
+        "resetFreq": 12,
+        "couponType": "VAR",
+        "extendFlag": "N",
+        "factorDate": "2026-07-15",
+        "isoCountry": "US",
+        "marketType": "DOMC",
+        "securityID": "31288QWN",
+        "vPointType": "CMO.M18",
+        "description": "F841553 POOL",
+        "esgBondFlag": false,
+        "groupNumber": 0,
+        "indexRating": "NA",
+        "issueAmount": 28.85049172,
+        "lowerRating": "NA",
+        "paymentFreq": 12,
+        "resetMargin": 2.2479,
+        "tierCapital": "NA",
+        "cpbAvailable": true,
+        "deliveryFlag": "N",
+        "industryCode": "MT",
+        "issuerTicker": "F841553",
+        "lowestRating": "NA",
+        "maturityDate": "2053-02-01",
+        "middleRating": "NA",
+        "modifiedDate": "2026-06-06",
+        "notionalFlag": false,
+        "parentTicker": "F841553",
+        "securityType": "CMO",
+        "agencyCMOFlag": true,
+        "callModelFlag": false,
+        "couponFormula": "( SOFR1C + inf ) * 0.00",
+        "currentCoupon": 4.378723,
+        "currentFactor": 0.69158187,
+        "dataStateList": [
+          {
+            "state": "CA",
+            "percent": 13.3632
+          },
+          {
+            "state": "TX",
+            "percent": 11.7497
+          },
+          {
+            "state": "IL",
+            "percent": 10.7066
+          },
+          {
+            "state": "FL",
+            "percent": 5.8136
+          },
+          {
+            "state": "NC",
+            "percent": 5.6884
+          },
+          {
+            "state": "CO",
+            "percent": 4.6926
+          },
+          {
+            "state": "WA",
+            "percent": 4.4254
+          },
+          {
+            "state": "VA",
+            "percent": 4.3478
+          },
+          {
+            "state": "AZ",
+            "percent": 4.1756
+          },
+          {
+            "state": "UT",
+            "percent": 4.1645
+          },
+          {
+            "state": "NY",
+            "percent": 3.8565
+          },
+          {
+            "state": "GA",
+            "percent": 3.0841
+          },
+          {
+            "state": "MD",
+            "percent": 3.0009
+          },
+          {
+            "state": "MN",
+            "percent": 2.8793
+          },
+          {
+            "state": "PA",
+            "percent": 2.738
+          },
+          {
+            "state": "DE",
+            "percent": 2.5515
+          },
+          {
+            "state": "NJ",
+            "percent": 2.4415
+          },
+          {
+            "state": "OR",
+            "percent": 1.4238
+          },
+          {
+            "state": "OH",
+            "percent": 1.3819
+          },
+          {
+            "state": "NV",
+            "percent": 1.1905
+          },
+          {
+            "state": "CT",
+            "percent": 1.0408
+          },
+          {
+            "state": "HI",
+            "percent": 0.8829
+          },
+          {
+            "state": "MI",
+            "percent": 0.7995
+          },
+          {
+            "state": "MO",
+            "percent": 0.5743
+          },
+          {
+            "state": "KY",
+            "percent": 0.5317
+          },
+          {
+            "state": "MA",
+            "percent": 0.4919
+          },
+          {
+            "state": "SD",
+            "percent": 0.3835
+          },
+          {
+            "state": "KS",
+            "percent": 0.374
+          },
+          {
+            "state": "AL",
+            "percent": 0.2787
+          },
+          {
+            "state": "NE",
+            "percent": 0.2516
+          },
+          {
+            "state": "DC",
+            "percent": 0.1864
+          },
+          {
+            "state": "LA",
+            "percent": 0.169
+          },
+          {
+            "state": "WI",
+            "percent": 0.1285
+          },
+          {
+            "state": "NH",
+            "percent": 0.1207
+          },
+          {
+            "state": "IN",
+            "percent": 0.1006
+          },
+          {
+            "state": "ID",
+            "percent": 0.0026
+          },
+          {
+            "state": "SC",
+            "percent": 0.0026
+          },
+          {
+            "state": "RI",
+            "percent": 0.0022
+          },
+          {
+            "state": "TN",
+            "percent": 0.0019
+          },
+          {
+            "state": "IA",
+            "percent": 0.0016
+          },
+          {
+            "state": "MT",
+            "percent": 0.0014
+          },
+          {
+            "state": "ME",
+            "percent": 0.0011
+          }
+        ],
+        "effectiveDate": "2026-07-15",
+        "greenBondFlag": false,
+        "highestRating": "NA",
+        "incomeCountry": "US",
+        "issuerCountry": "US",
+        "pacPrepayType": "P",
+        "principalType": "REG",
+        "seniorityType": "NA",
+        "assetClassCode": "CO",
+        "cgmiSectorCode": "NA",
+        "incomeCountry3": "USA",
+        "instrumentType": "NA",
+        "issuerCountry2": "US",
+        "issuerCountry3": "USA",
+        "lowestRatingNF": "NA",
+        "reportedFactor": 0.69158187,
+        "sequenceNumber": 1,
+        "vPointCategory": "RA",
+        "bloombergTicker": "FH 841553",
+        "firstSettleDate": "2023-03-01",
+        "industrySubCode": "NA",
+        "lossesModelFlag": false,
+        "nextPaymentDate": "2026-06-15",
+        "redemptionValue": 100,
+        "securitySubType": "CMO",
+        "agencyCreditFlag": false,
+        "firstPaymentDate": "2023-05-15",
+        "securityCalcType": "CMO",
+        "stepDownFailFlag": false,
+        "assetClassSubCode": "CMO",
+        "classPaymentDelay": 44,
+        "couponDescription": "Variable",
+        "currentFactorType": "Actual",
+        "finalMaturityDate": "2053-02-01",
+        "modifiedTimeStamp": "2026-06-06T21:29:00Z",
+        "outstandingAmount": 19.95247699,
+        "parentDescription": "NA",
+        "prepaymentOptions": {
+          "prepayType": [
+            "CPR",
+            "PSA",
+            "VEC",
+            "CPB",
+            "MTB"
+          ]
+        },
+        "dataCollateralList": [
+          {
+            "ltv": 76.8676,
+            "wam": 316,
+            "balance": 19952476.99,
+            "lifeCap": 10.002966,
+            "loanAge": 44,
+            "grossWAC": 5.0022,
+            "loanSize": 335121.9062,
+            "annualHPA": 3.652,
+            "currentLTV": 61.5832,
+            "percentDTI": 39.227937,
+            "percentInv": 9.3266,
+            "percentPMI": 31.772,
+            "percentPUD": 44.52,
+            "adjustedLTV": 61.5832,
+            "combinedLTV": 76.867602,
+            "creditScore": 765,
+            "grossMargin": 2.871404,
+            "percentCoop": 0.18,
+            "percentRefi": 21.7646,
+            "percent1Unit": 98.884,
+            "percentCondo": 16.84,
+            "percentHARP2": 0,
+            "percentJumbo": 0.636,
+            "percentOwner": 89.301,
+            "percentPIWNA": 0,
+            "cumulativeHPA": 114.617,
+            "delinquencies": {
+              "current": {
+                "percent": 97.0992
+              },
+              "unknown": {
+                "percent": 0
+              },
+              "del30Days": {
+                "percent": 2.8982
+              },
+              "del60Days": {
+                "percent": 0
+              },
+              "del90Days": {
+                "percent": 0
+              },
+              "foreclosed": {
+                "percent": 0
+              },
+              "averageMonths": 5,
+              "del90PlusDays": {
+                "percent": 0.0026
+              },
+              "del120PlusDays": {
+                "percent": 0.0026
+              },
+              "twentyOneMonth": {
+                "percent": 0
+              },
+              "twentyTwoMonth": {
+                "percent": 0
+              },
+              "realEstateOwned": {
+                "percent": 0
+              },
+              "trialPaymentPlan": {
+                "percent": 0
+              },
+              "fourToTwentyMonth": {
+                "percent": 0.0026
+              },
+              "twentyThreeMonthPlus": {
+                "percent": 0
+              }
+            },
+            "jumboLoanSize": 971000,
+            "maxIssuerList": [
+              {
+                "name": "NEWREZ, LLC",
+                "percent": 43.5639
+              },
+              {
+                "name": "WELLS FARGO BANK, NATIONAL ASSOCIATION",
+                "percent": 21.8859
+              },
+              {
+                "name": "CALIBER HOME LOANS, INC.",
+                "percent": 11.3861
+              },
+              {
+                "name": "UNITED WHOLESALE MORTGAGE, LLC",
+                "percent": 10.2974
+              },
+              {
+                "name": "CITIMORTGAGE, INC.",
+                "percent": 6.5256
+              },
+              {
+                "name": "FLAGSTAR BANK, FSB",
+                "percent": 3.15
+              },
+              {
+                "name": "HOME POINT FINANCIAL CORPORATION",
+                "percent": 1.3698
+              },
+              {
+                "name": "FIFTH THIRD BANK, NATIONAL ASSOCIATION",
+                "percent": 0.8969
+              },
+              {
+                "name": "GUARANTEED RATE, INC.",
+                "percent": 0.4037
+              },
+              {
+                "name": "PNC BANK, NATIONAL ASSOCIATION",
+                "percent": 0.3288
+              },
+              {
+                "name": "JPMORGAN CHASE BANK, NATIONAL ASSOCIATIO",
+                "percent": 0.1918
+              }
+            ],
+            "percentSecond": 1.373,
+            "collateralType": "FH30-7X6M-SOFR1C",
+            "percentTwoLien": 0.086,
+            "maxServicerList": [
+              {
+                "name": "NEW RESIDENTIAL MORTGAGE LLC",
+                "percent": 54.95
+              },
+              {
+                "name": "WELLS FARGO BANK, NATIONAL ASSOCIATION",
+                "percent": 17.5154
+              },
+              {
+                "name": "UNITED WHOLESALE MORTGAGE, LLC",
+                "percent": 8.5689
+              },
+              {
+                "name": "CITIMORTGAGE, INC.",
+                "percent": 6.5256
+              },
+              {
+                "name": "ROCKET MORTGAGE, LLC",
+                "percent": 6.3914
+              },
+              {
+                "name": "LAKEVIEW LOAN SERVICING, LLC",
+                "percent": 2.1999
+              },
+              {
+                "name": "PNC BANK, NATIONAL ASSOCIATION",
+                "percent": 1.24
+              },
+              {
+                "name": "ONSLOW BAY FINANCIAL LLC",
+                "percent": 1.1105
+              },
+              {
+                "name": "FIFTH THIRD BANK, NATIONAL ASSOCIATION",
+                "percent": 0.8969
+              },
+              {
+                "name": "NEWREZ LLC",
+                "percent": 0.4104
+              }
+            ],
+            "originalBalance": 30128989.35,
+            "percent2To4Unit": 1.1162,
+            "percentDeferred": 0.002,
+            "percentPIWOther": 0,
+            "percentPurchase": 78.2359,
+            "percentStateHFA": 0,
+            "rateResetPeriod": 6,
+            "dataQuartileList": [
+              {
+                "ltvlow": 7,
+                "waclow": 2.371,
+                "ltvhigh": 71.748,
+                "wachigh": 3.447,
+                "poolAgeLow": 38,
+                "loanSizeLow": 73000,
+                "poolAgeHigh": 39,
+                "loanSizeHigh": 307889.449,
+                "percentDTILow": 20.667,
+                "creditScoreLow": 643,
+                "percentDTIHigh": 32.917,
+                "creditScoreHigh": 742.049,
+                "originationYearLow": 20210901,
+                "originationYearHigh": 20220601
+              },
+              {
+                "ltvlow": 71.748,
+                "waclow": 3.447,
+                "ltvhigh": 80,
+                "wachigh": 5.797,
+                "poolAgeLow": 39,
+                "loanSizeLow": 307889.449,
+                "poolAgeHigh": 39,
+                "loanSizeHigh": 428996.493,
+                "percentDTILow": 32.917,
+                "creditScoreLow": 742.049,
+                "percentDTIHigh": 41.466,
+                "creditScoreHigh": 770.42,
+                "originationYearLow": 20220601,
+                "originationYearHigh": 20220901
+              },
+              {
+                "ltvlow": 80,
+                "waclow": 5.797,
+                "ltvhigh": 90,
+                "wachigh": 6.138,
+                "poolAgeLow": 39,
+                "loanSizeLow": 428996.493,
+                "poolAgeHigh": 39,
+                "loanSizeHigh": 536619.405,
+                "percentDTILow": 41.466,
+                "creditScoreLow": 770.42,
+                "percentDTIHigh": 46.585,
+                "creditScoreHigh": 796,
+                "originationYearLow": 20220901,
+                "originationYearHigh": 20230201
+              },
+              {
+                "ltvlow": 90,
+                "waclow": 6.138,
+                "ltvhigh": 95,
+                "wachigh": 6.888,
+                "poolAgeLow": 39,
+                "loanSizeLow": 536619.405,
+                "poolAgeHigh": 48,
+                "loanSizeHigh": 971000,
+                "percentDTILow": 46.585,
+                "creditScoreLow": 796,
+                "percentDTIHigh": 49.032,
+                "creditScoreHigh": 817,
+                "originationYearLow": 20230201,
+                "originationYearHigh": 20230301
+              }
+            ],
+            "percentGreenBond": 0,
+            "percentHARPOwner": 0,
+            "percentPIWWaiver": 13.868729,
+            "percentPrincipal": 100,
+            "adjustedLoanCount": 99,
+            "forbearanceAmount": 0,
+            "percentCashWindow": 0,
+            "percentPIWUnknown": 0,
+            "newCurrentLoanSize": 384819.688,
+            "originalPercentPMI": 39.311,
+            "originationChannel": {
+              "broker": 26.809,
+              "retail": 24.305,
+              "unknown": 0,
+              "unspecified": 0,
+              "correspondence": 48.882
+            },
+            "percentMultiFamily": 1.116163,
+            "percentPMICoverage": 8.615,
+            "percentRefiCashout": 12.0285,
+            "socialDensityScore": 0.873,
+            "collateralNetCoupon": 4.3787,
+            "newOriginalLoanSize": 445529.844,
+            "nextResetRollMonths": 40,
+            "percentPIWAppraisal": 86.131271,
+            "percentPIWOnsiteAVM": 0,
+            "percentSingleFamily": 38.45,
+            "socialCriteriaShare": 59.883,
+            "spreadAtOrigination": 51.0632,
+            "weightedAvgLoanSize": 370111.1562,
+            "collateralDescription": "Arm",
+            "fhfalowIncomeRefiElig": 9.863,
+            "percentRefiNonCashout": 9.7362,
+            "percentSpecialEligHFA": 0,
+            "borrowerAssistancePlan": {
+              "percentNotAvailable": 0,
+              "percentNoWorkoutPlan": 2.9,
+              "percentNotApplicable": 97.1,
+              "percentRepaymentPlan": 0,
+              "percentForbearancePlan": 0,
+              "percentTrialPeriodPlan": 0,
+              "percentOtherWorkoutPITrialPeriod": 0
+            },
+            "percentNewConstruction": 0,
+            "percentPIWGSERefinance": 0,
+            "percentSpecialEligHome": 0,
+            "percentSpecialEligRefi": 0,
+            "adjustedCurrentLoanSize": 384819.67,
+            "amortizedLTVConvWithPMI": 86.902,
+            "percentManufacturedHome": 0,
+            "percentTwoPlusBorrowers": 39.542,
+            "adjustedOriginalLoanSize": 445529.85,
+            "dataPrepayModelSellerList": [
+              {
+                "seller": "TPO_USHOR",
+                "percent": 10.2974
+              },
+              {
+                "seller": "TPO_NSTAR",
+                "percent": 4.1998
+              },
+              {
+                "seller": "RTL_NSTAR",
+                "percent": 0.3199
+              }
+            ],
+            "geographicAverageLoanSize": 345849.631,
+            "originalLoanSizeRemaining": 427511.079,
+            "percentFirstTimeHomeBuyer": 37.742125,
+            "percentUnknownLoanPurpose": 0,
+            "current3RdPartyOrigination": 75.691,
+            "originalPercentPMICoverage": 9.968,
+            "spreadAtOriginationWithPMI": 40.639,
+            "adjustedSpreadAtOrigination": 51.0632,
+            "dataPrepayModelServicerList": [
+              {
+                "percent": 55.3606,
+                "servicer": "NWRES"
+              },
+              {
+                "percent": 17.5149,
+                "servicer": "WELLS"
+              },
+              {
+                "percent": 8.5691,
+                "servicer": "USHOR"
+              },
+              {
+                "percent": 6.5256,
+                "servicer": "CITI"
+              },
+              {
+                "percent": 6.3909,
+                "servicer": "QUICK"
+              },
+              {
+                "percent": 6.3909,
+                "servicer": "TNS_TPO_ROCKT"
+              },
+              {
+                "percent": 2.1998,
+                "servicer": "LAKEV"
+              },
+              {
+                "percent": 1.2397,
+                "servicer": "PNC"
+              },
+              {
+                "percent": 1.1106,
+                "servicer": "ONSLO"
+              },
+              {
+                "percent": 0.8969,
+                "servicer": "FIFTH"
+              },
+              {
+                "percent": 0.1918,
+                "servicer": "JPM"
+              }
+            ],
+            "originalWeightedAvgLoanSize": 427511.1875,
+            "originalLoansOriginalPercentPMI": 30.544,
+            "originalLoansOriginalPMICoverage": 7.648,
+            "amortizedLTVConvOriginallyWithPMI": 84.211,
+            "percentAmortizedLTVUnder78ConvWithPMI": 5.91,
+            "percentAmortizedLTVUnder78ConvOriginallyWithPMI": 18.921
+          }
+        ],
+        "dataPPMHistoryList": [
+          {
+            "prepayType": "CDR",
+            "dataPPMHistoryDetailList": [
+              {
+                "month": "1",
+                "prepayRate": 0
+              },
+              {
+                "month": "3",
+                "prepayRate": 0
+              },
+              {
+                "month": "6",
+                "prepayRate": 0.002
+              },
+              {
+                "month": "12",
+                "prepayRate": 0.0032
+              },
+              {
+                "month": "24",
+                "prepayRate": 0.1591
+              },
+              {
+                "month": "Life",
+                "prepayRate": 0.173
+              }
+            ]
+          },
+          {
+            "prepayType": "CPR",
+            "dataPPMHistoryDetailList": [
+              {
+                "month": "1",
+                "prepayRate": 8.871
+              },
+              {
+                "month": "3",
+                "prepayRate": 25.8473
+              },
+              {
+                "month": "6",
+                "prepayRate": 15.3494
+              },
+              {
+                "month": "12",
+                "prepayRate": 12.6593
+              },
+              {
+                "month": "24",
+                "prepayRate": 10.7197
+              },
+              {
+                "month": "Life",
+                "prepayRate": 9.2295
+              }
+            ]
+          },
+          {
+            "prepayType": "VPR",
+            "dataPPMHistoryDetailList": [
+              {
+                "month": "1",
+                "prepayRate": 8.871
+              },
+              {
+                "month": "3",
+                "prepayRate": 25.8469
+              },
+              {
+                "month": "6",
+                "prepayRate": 15.3472
+              },
+              {
+                "month": "12",
+                "prepayRate": 12.6572
+              },
+              {
+                "month": "24",
+                "prepayRate": 10.5716
+              },
+              {
+                "month": "Life",
+                "prepayRate": 9.0569
+              }
+            ]
+          }
+        ],
+        "issuerLowestRating": "NA",
+        "issuerMiddleRating": "NA",
+        "loanCollateralFlag": 0,
+        "pacRangeLowerBound": 0,
+        "pacRangeUpperBound": 0,
+        "reportedFactorDate": "2026-07-15",
+        "industryDescription": "Mortgage",
+        "issuerHighestRating": "NA",
+        "previousPaymentDate": "2026-05-15",
+        "reverseMortgageFlag": false,
+        "delinquencyModelFlag": false,
+        "principalDescription": "Regular",
+        "cgmiSectorDescription": "NA",
+        "collateralDescendFlag": true,
+        "collateralGrossCoupon": 5.002,
+        "expModelAvailableFlag": true,
+        "newModelAvailableFlag": true,
+        "defaultHorizonPYMethod": "Spread Change",
+        "industrySubDescription": "NA",
+        "collateralEffectiveDate": "2026-07-15",
+        "helHasArmCollateralFlag": false,
+        "lossSeverityDefinedFlag": false,
+        "assetClassSubDescription": "Collateralized Asset Backed - Other CMO",
+        "dataPrepayModelSellerList": [
+          {
+            "seller": "TPO_USHOR",
+            "percent": 10.2974
+          },
+          {
+            "seller": "TPO_NSTAR",
+            "percent": 4.1998
+          },
+          {
+            "seller": "RTL_NSTAR",
+            "percent": 0.3199
+          }
+        ],
+        "agencyCreditActualLossFlag": false,
+        "pricingVectorAvailableFlag": false,
+        "dataPrepayModelServicerList": [
+          {
+            "percent": 55.3606,
+            "servicer": "NWRES"
+          },
+          {
+            "percent": 17.5149,
+            "servicer": "WELLS"
+          },
+          {
+            "percent": 8.5691,
+            "servicer": "USHOR"
+          },
+          {
+            "percent": 6.5256,
+            "servicer": "CITI"
+          },
+          {
+            "percent": 6.3909,
+            "servicer": "QUICK"
+          },
+          {
+            "percent": 6.3909,
+            "servicer": "TNS_TPO_ROCKT"
+          },
+          {
+            "percent": 2.1998,
+            "servicer": "LAKEV"
+          },
+          {
+            "percent": 1.2397,
+            "servicer": "PNC"
+          },
+          {
+            "percent": 1.1106,
+            "servicer": "ONSLO"
+          },
+          {
+            "percent": 0.8969,
+            "servicer": "FIFTH"
+          },
+          {
+            "percent": 0.1918,
+            "servicer": "JPM"
+          }
+        ]
+      },
+      "ticker": "F841553",
+      "country": "US",
+      "currency": "USD",
+      "className": "POOL",
+      "identifier": "31288QWN",
+      "description": "F841553 POOL",
+      "issuerTicker": "F841553",
+      "maturityDate": "2053-02-01",
+      "securityType": "CMO",
+      "currentCoupon": 4.378723,
+      "securitySubType": "CMO"
+    }
+  ]
+}
+
+{
+  "input": [
+    {
+      "identifier": "31288QWN6",
+      "floaterSettings": {},
+      "extraSettings": {
+        "includePartials": true
+      },
+      "level": "99.5990104",
+      "curve": {
+        "curveType": "SWAP_RFR"
+      },
+      "prepaySettings": {
+        "rate": "100",
+        "type": "Model"
+      },
+      "settlementDate": "2026-04-30",
+      "volatility": {
+        "type": "LMMSOFRFLAT"
+      }
+    }
+  ],
+  "globalSettings": {
+    "pricingDate": "2026-04-30"
+  }
+}
+
+
+{
+  "meta": {
+    "status": "DONE",
+    "requestId": "R-749215327",
+    "timeStamp": "2026-06-11T13:28:17Z",
+    "responseType": "PY_CALC",
+    "resultsStatus": "ALL"
+  },
+  "results": [
+    {
+      "py": {
+        "oas": 89.7933,
+        "wal": 3.468128,
+        "dv01": 0.030374011,
+        "isin": "US31288QWN68",
+        "cusip": "31288QWN6",
+        "price": 99.5990104,
+        "yield": 4.796529,
+        "ticker": "F841553",
+        "cdYield": 0,
+        "cmmType": 100,
+        "pyLevel": "99.5990104",
+        "zSpread": 97.884758,
+        "duration": 3.038829,
+        "effReset": 110.0307,
+        "ziSpread": 74.181664,
+        "znSpread": 97.884758,
+        "benchmark": "3 yr",
+        "className": "POOL",
+        "convexity": 0.1624,
+        "curveDate": "2026-04-30",
+        "curveType": "RFRSwap",
+        "fullPrice": 99.95301133,
+        "modelCode": 2501,
+        "creditLoss": 0,
+        "prepayRate": 100,
+        "prepayType": "VEC",
+        "securityID": "31288QWN",
+        "spreadDV01": 0.032806598,
+        "tsyCurveID": "USDq0430",
+        "accruedDays": 29,
+        "description": "F841553 POOL",
+        "grossSpread": 110.989,
+        "pricingDate": "2026-04-30",
+        "swapCurveID": "SOFq430",
+        "currentYield": 4.396,
+        "effectiveWAL": 3.9073,
+        "maturityDate": "2053-02-01",
+        "nextCallDate": "2053-04-15",
+        "securityType": "CMO",
+        "staticSpread": 97.8848,
+        "volModelType": "LMMSOFRFLAT",
+        "yieldToWorst": 4.796529,
+        "convexityCost": 21.1915,
+        "currentCoupon": 4.378723,
+        "effectiveCV01": -0.004248808,
+        "effectiveDV01": 0.021787915,
+        "cmoProcessTime": 53,
+        "discountMargin": 102.9097,
+        "effectiveYield": 4.8741,
+        "scenarioMargin": 102.90966,
+        "settlementDate": "2026-04-30",
+        "spreadDuration": 3.282202,
+        "accruedInterest": 0.35400093,
+        "annualizedYield": 4.854,
+        "compoundingFreq": 2,
+        "convexityEffect": -21.1915,
+        "dataPpmProjList": [
+          {
+            "oneYear": 216.1951,
+            "longTerm": 396.1642,
+            "oneMonth": 241.299,
+            "sixMonth": 222.4,
+            "prepayType": "PSA",
+            "threeMonth": 235.762
+          },
+          {
+            "oneYear": 12.9717,
+            "longTerm": 23.7698,
+            "oneMonth": 14.478,
+            "sixMonth": 13.344,
+            "prepayType": "CPR",
+            "threeMonth": 14.146
+          },
+          {
+            "oneYear": 12.8032,
+            "longTerm": 23.5684,
+            "oneMonth": 14.451,
+            "sixMonth": 13.277,
+            "prepayType": "VPR",
+            "threeMonth": 14.107
+          },
+          {
+            "oneYear": 0.1912,
+            "longTerm": 0.2505,
+            "oneMonth": 0.031,
+            "sixMonth": 0.077,
+            "prepayType": "CDR",
+            "threeMonth": 0.044
+          },
+          {
+            "oneYear": 10.8221,
+            "longTerm": 11.798,
+            "oneMonth": 12.471,
+            "sixMonth": 11.29,
+            "prepayType": "Turnover",
+            "threeMonth": 12.125
+          },
+          {
+            "oneYear": 1.2594,
+            "longTerm": 1.352,
+            "oneMonth": 1.206,
+            "sixMonth": 1.231,
+            "prepayType": "Curtail",
+            "threeMonth": 1.218
+          },
+          {
+            "oneYear": 0.9521,
+            "longTerm": 12.1594,
+            "oneMonth": 1.043,
+            "sixMonth": 0.997,
+            "prepayType": "Refi",
+            "threeMonth": 1.025
+          },
+          {
+            "oneYear": 0.7385,
+            "longTerm": 1.8437,
+            "oneMonth": 0.72,
+            "sixMonth": 0.717,
+            "prepayType": "RefiCashout",
+            "threeMonth": 0.723
+          },
+          {
+            "oneYear": 0.215,
+            "longTerm": 10.3006,
+            "oneMonth": 0.326,
+            "sixMonth": 0.282,
+            "prepayType": "RefiRateterm",
+            "threeMonth": 0.304
+          },
+          {
+            "oneYear": 0,
+            "longTerm": 0.0005,
+            "oneMonth": 0,
+            "sixMonth": 0,
+            "prepayType": "RefiCredit",
+            "threeMonth": 0
+          },
+          {
+            "oneYear": 12.8754,
+            "longTerm": 21.9892,
+            "oneMonth": 14.454,
+            "sixMonth": 13.284,
+            "prepayType": "FwdCPR",
+            "threeMonth": 14.108
+          },
+          {
+            "oneYear": 0.191,
+            "longTerm": 0.2594,
+            "oneMonth": 0.031,
+            "sixMonth": 0.077,
+            "prepayType": "FwdCDR",
+            "threeMonth": 0.044
+          },
+          {
+            "oneYear": 12.7069,
+            "longTerm": 21.7774,
+            "oneMonth": 14.427,
+            "sixMonth": 13.217,
+            "prepayType": "FwdVPR",
+            "threeMonth": 14.07
+          },
+          {
+            "oneYear": 10.7911,
+            "longTerm": 11.73,
+            "oneMonth": 12.465,
+            "sixMonth": 11.276,
+            "prepayType": "FwdVPRTurnover",
+            "threeMonth": 12.115
+          },
+          {
+            "oneYear": 1.2594,
+            "longTerm": 1.3101,
+            "oneMonth": 1.206,
+            "sixMonth": 1.231,
+            "prepayType": "FwdVPRCurtail",
+            "threeMonth": 1.218
+          },
+          {
+            "oneYear": 0.878,
+            "longTerm": 10.3363,
+            "oneMonth": 1.023,
+            "sixMonth": 0.946,
+            "prepayType": "FwdVPRRefi",
+            "threeMonth": 0.993
+          },
+          {
+            "oneYear": 0.157,
+            "longTerm": 8.385,
+            "oneMonth": 0.305,
+            "sixMonth": 0.237,
+            "prepayType": "FwdVPRRefiRateterm",
+            "threeMonth": 0.274
+          },
+          {
+            "oneYear": 0.7221,
+            "longTerm": 1.8983,
+            "oneMonth": 0.72,
+            "sixMonth": 0.71,
+            "prepayType": "FwdVPRRefiCashout",
+            "threeMonth": 0.721
+          }
+        ],
+        "forwardMeasures": {
+          "wal": 3.773883,
+          "yield": 4.933495,
+          "margin": 110.985,
+          "cumulativeLoss": 0,
+          "cumulativeDefaults": 0
+        },
+        "nextPaymentDate": "2026-06-15",
+        "spreadConvexity": 0.204931,
+        "yearsToMaturity": 26.9583,
+        "yieldToNextCall": 4.796529,
+        "economicExposure": 99.953011,
+        "macaulayDuration": 3.1117,
+        "settleDateFactor": 0.7222906,
+        "spreadToActCurve": 86.0984,
+        "spreadToTsyCurve": 86.2969,
+        "yieldCurveMargin": 110.9848,
+        "yieldToWorstCall": 4.796529,
+        "effectiveDuration": 2.179815769,
+        "macaulayConvexity": 15.4762,
+        "spreadToBenchmark": 111.1405,
+        "spreadToSwapCurve": 82.1389,
+        "spreadToWorstCall": 111,
+        "currentAccrualDate": "2026-04-01",
+        "effectiveConvexity": -0.425080558,
+        "moatsCurrentCoupon": 5.28,
+        "optionModelCurveID": "SOFq430",
+        "yieldCurveDuration": 2.1798,
+        "benchmarkToNextCall": "30 yr",
+        "durationToWorstCase": 3.038829,
+        "semiAnnualizedYield": 4.796529,
+        "spreadToRFRSwapCurve": 110.989,
+        "yearsToFinalMaturity": 26.753,
+        "spreadDurationTreasury": 3.282202,
+        "dataPartialDurationList": [
+          {
+            "partialDV01": 0.001899245,
+            "partialDuration": 0.19,
+            "partialDurationYear": 1,
+            "partialDurationPriceUp": 99.550587,
+            "partialDurationPriceDown": 99.645549
+          },
+          {
+            "partialDV01": 0.003344522,
+            "partialDuration": 0.3346,
+            "partialDurationYear": 2,
+            "partialDurationPriceUp": 99.506762,
+            "partialDurationPriceDown": 99.673988
+          },
+          {
+            "partialDV01": 0.012595127,
+            "partialDuration": 1.2601,
+            "partialDurationYear": 3,
+            "partialDurationPriceUp": 99.257369,
+            "partialDurationPriceDown": 99.887126
+          },
+          {
+            "partialDV01": 0.00579658,
+            "partialDuration": 0.5799,
+            "partialDurationYear": 5,
+            "partialDurationPriceUp": 99.420195,
+            "partialDurationPriceDown": 99.710024
+          },
+          {
+            "partialDV01": -0.000613979,
+            "partialDuration": -0.0614,
+            "partialDurationYear": 10,
+            "partialDurationPriceUp": 99.606213,
+            "partialDurationPriceDown": 99.575514
+          },
+          {
+            "partialDV01": -0.000961773,
+            "partialDuration": -0.0962,
+            "partialDurationYear": 20,
+            "partialDurationPriceUp": 99.624971,
+            "partialDurationPriceDown": 99.576882
+          },
+          {
+            "partialDV01": -0.000466207,
+            "partialDuration": -0.0466,
+            "partialDurationYear": 30,
+            "partialDurationPriceUp": 99.612576,
+            "partialDurationPriceDown": 99.589266
+          }
+        ],
+        "fundedEffectiveDuration": 2.179816,
+        "effectiveDurationPriceUp": 99.041035,
+        "fundedEffectiveConvexity": -0.425081,
+        "lastPrincipalPaymentDate": "2053-04-15",
+        "firstPrincipalPaymentDate": "2026-06-15",
+        "effectiveDurationPriceDown": 100.13043,
+        "spreadToActCurveToNextCall": -19.047,
+        "spreadToTsyCurveToNextCall": -19.047,
+        "spreadToBenchmarkToNextCall": 59.8008,
+        "spreadToSwapCurveToNextCall": 59.8008,
+        "principalWritedownCreditLoss": 0,
+        "cumulativeLossToNextCallCurrent": 0,
+        "cumulativeLossToNextCallOriginal": 0,
+        "cumulativeDefaultToNextCallCurrent": 0,
+        "cumulativeDefaultToNextCallOriginal": 0
+      },
+      "securityID": "31288QWN"
+    }
+  ]
+}
+
+
+CMBS: 
+=YBPRICE("3132WWYD8",97.5290671,2026-04-30,"","RFRSwap",2026-04-30,"LMMSOFRFLAT","","CPY",0,"PDUR7")
+
+4.32849	4.39904	3.46884	0.16311	0.03393	678.52365	0.03060	0.04420	1.75220	1.64170	0.00000	0.00000	0.00000	3.81150	NA	60.87340	58.49163	0.86641	0.00000	5.19000	146.00000	28789672.00000	NA	NA	3.55590	0.03731	7.11792	3.51200	0.03557	3.47442	3.42640	0.03238	-3.31481	3.38470	0.03092	-6.47888
+{
+  "input": [
+    {
+      "identifier": "3132WWYD8",
+      "floaterSettings": {},
+      "extraSettings": {
+        "includePartials": true
+      },
+      "level": "97.5290671",
+      "curve": {
+        "curveType": "SWAP_RFR"
+      },
+      "prepaySettings": {
+        "rate": "0",
+        "type": "CPY"
+      },
+      "settlementDate": "2026-04-30",
+      "volatility": {
+        "type": "LMMSOFRFLAT"
+      }
+    }
+  ],
+  "globalSettings": {
+    "pricingDate": "2026-04-30"
+  }
+}
+
+
+{
+  "meta": {
+    "status": "DONE",
+    "requestId": "R-749233703",
+    "timeStamp": "2026-06-11T14:50:49Z",
+    "responseType": "PY_CALC",
+    "resultsStatus": "ALL"
+  },
+  "results": [
+    {
+      "py": {
+        "oas": 60.8734,
+        "wal": 3.811522,
+        "dv01": 0.03397895,
+        "isin": "US3132WWYD89",
+        "cusip": "3132WWYD8",
+        "price": 97.5290671,
+        "yield": 4.328484,
+        "ticker": "FWA3207",
+        "cdYield": 0,
+        "pyLevel": "97.5290671",
+        "zSpread": 58.491631,
+        "duration": 3.473653,
+        "ziSpread": 36.836174,
+        "znSpread": 58.491631,
+        "benchmark": "4 yr",
+        "className": "POOL",
+        "convexity": 0.147,
+        "curveDate": "2026-04-30",
+        "curveType": "RFRSwap",
+        "fullPrice": 97.8190671,
+        "creditLoss": 0,
+        "prepayRate": 0,
+        "prepayType": "CPY",
+        "securityID": "3132WWYD",
+        "spreadDV01": 0.034615815,
+        "tsyCurveID": "USDq0430",
+        "accruedDays": 29,
+        "description": "FWA3207 POOL",
+        "grossSpread": 64.0735,
+        "pricingDate": "2026-04-30",
+        "swapCurveID": "SOFq430",
+        "currentYield": 3.691,
+        "effectiveWAL": 3.8115,
+        "maturityDate": "2030-04-01",
+        "nextCallDate": "2030-04-25",
+        "securityType": "CMO",
+        "staticSpread": 58.4916,
+        "volModelType": "LMMSOFRFLAT",
+        "yieldToWorst": 4.328484,
+        "convexityCost": 0,
+        "currentCoupon": 3.6,
+        "effectiveCV01": 0.001595572,
+        "effectiveDV01": 0.033931836,
+        "cmoProcessTime": 8,
+        "effectiveYield": 4.5847,
+        "settlementDate": "2026-04-30",
+        "spreadDuration": 3.538759,
+        "accruedInterest": 0.29,
+        "annualizedYield": 4.375,
+        "compoundingFreq": 2,
+        "convexityEffect": 0,
+        "forwardMeasures": {
+          "wal": 3.811522,
+          "yield": 4.328488,
+          "margin": 60.873,
+          "cumulativeLoss": 0,
+          "cumulativeDefaults": 0
+        },
+        "nextPaymentDate": "2026-05-25",
+        "spreadConvexity": 0.152561,
+        "yearsToMaturity": 3.9861,
+        "yieldToNextCall": 4.328484,
+        "economicExposure": 97.819067,
+        "macaulayDuration": 3.5488,
+        "settleDateFactor": 0.86942033,
+        "spreadToActCurve": 37.3301,
+        "spreadToTsyCurve": 37.4876,
+        "yieldCurveMargin": 60.8734,
+        "yieldToWorstCall": 4.328484,
+        "effectiveDuration": 3.468836546,
+        "macaulayConvexity": 13.5707,
+        "spreadToBenchmark": 64.0125,
+        "spreadToSwapCurve": 35.2556,
+        "spreadToWorstCall": 64,
+        "currentAccrualDate": "2026-04-01",
+        "effectiveConvexity": 0.163114648,
+        "optionModelCurveID": "SOFq430",
+        "yieldCurveDuration": 3.4688,
+        "benchmarkToNextCall": "30 yr",
+        "durationToWorstCase": 3.473653,
+        "semiAnnualizedYield": 4.328484,
+        "spreadToRFRSwapCurve": 64.0735,
+        "yearsToFinalMaturity": 3.919,
+        "spreadDurationTreasury": 3.538759,
+        "dataPartialDurationList": [
+          {
+            "partialDV01": 0.000299774,
+            "partialDuration": 0.0306,
+            "partialDurationYear": 1,
+            "partialDurationPriceUp": 97.521584,
+            "partialDurationPriceDown": 97.536573
+          },
+          {
+            "partialDV01": 0.000432577,
+            "partialDuration": 0.0442,
+            "partialDurationYear": 2,
+            "partialDurationPriceUp": 97.518267,
+            "partialDurationPriceDown": 97.539896
+          },
+          {
+            "partialDV01": 0.017140146,
+            "partialDuration": 1.7522,
+            "partialDurationYear": 3,
+            "partialDurationPriceUp": 97.101835,
+            "partialDurationPriceDown": 97.958842
+          },
+          {
+            "partialDV01": 0.016058545,
+            "partialDuration": 1.6417,
+            "partialDurationYear": 5,
+            "partialDurationPriceUp": 97.128074,
+            "partialDurationPriceDown": 97.931001
+          },
+          {
+            "partialDV01": 0,
+            "partialDuration": 0,
+            "partialDurationYear": 10,
+            "partialDurationPriceUp": 97.529067,
+            "partialDurationPriceDown": 97.529067
+          },
+          {
+            "partialDV01": 0,
+            "partialDuration": 0,
+            "partialDurationYear": 20,
+            "partialDurationPriceUp": 97.529067,
+            "partialDurationPriceDown": 97.529067
+          },
+          {
+            "partialDV01": 0,
+            "partialDuration": 0,
+            "partialDurationYear": 30,
+            "partialDurationPriceUp": 97.529067,
+            "partialDurationPriceDown": 97.529067
+          }
+        ],
+        "fundedEffectiveDuration": 3.468837,
+        "effectiveDurationPriceUp": 96.685757,
+        "fundedEffectiveConvexity": 0.163115,
+        "lastPrincipalPaymentDate": "2030-04-25",
+        "firstPrincipalPaymentDate": "2026-05-25",
+        "effectiveDurationPriceDown": 98.382349,
+        "spreadToActCurveToNextCall": -65.8515,
+        "spreadToTsyCurveToNextCall": -65.8515,
+        "spreadToBenchmarkToNextCall": 12.9964,
+        "spreadToSwapCurveToNextCall": 12.9964,
+        "principalWritedownCreditLoss": 0,
+        "cumulativeLossToNextCallCurrent": 0,
+        "cumulativeLossToNextCallOriginal": 0,
+        "cumulativeDefaultToNextCallCurrent": 0,
+        "cumulativeDefaultToNextCallOriginal": 0
+      },
+      "securityID": "3132WWYD"
+    }
+  ]
+}
+
+
+Treasu
+
+3.6043160	3.5547020	0.2336253	0.0011380	0.0023169	0.0000000	0.2336000	0.0000000	0.0000000	0.0000000	0.0000000	0.0000000	0.0000000	0.2306000	0.0000000	-11.3579000	-11.3579000	0.00	0.0	0.00	0	 -   	0	0	0.23480	0.00234	0.46564	0.23420	0.00233	0.23225	0.23300	0.00231	-0.23112	0.23240	0.00229	-0.46113ry: 
+
+=YBPRICE("912797TP2",99.1705764,2026-04-30,"","RFRSwap",2026-04-30,"Default","","CPR","","PDUR7")
+
+{
+  "input": [
+    {
+      "identifier": "912797TP2",
+      "floaterSettings": {},
+      "extraSettings": {
+        "includePartials": true
+      },
+      "level": "99.1705764",
+      "curve": {
+        "curveType": "SWAP_RFR"
+      },
+      "prepaySettings": {
+        "rate": "",
+        "type": "CPR"
+      },
+      "settlementDate": "2026-04-30",
+      "volatility": {
+        "type": "Default"
+      }
+    }
+  ],
+  "globalSettings": {
+    "pricingDate": "2026-04-30"
+  }
+}
+
+
+{
+  "meta": {
+    "status": "DONE",
+    "requestId": "R-749739848",
+    "timeStamp": "2026-06-12T09:22:03Z",
+    "responseType": "PY_CALC",
+    "resultsStatus": "ALL"
+  },
+  {
+  "meta": {
+    "status": "DONE",
+    "requestId": "R-749779351",
+    "timeStamp": "2026-06-12T11:50:17Z",
+    "responseType": "PY_CALC",
+    "resultsStatus": "ALL"
+  },
+  "results": [
+    {
+      "py": {
+        "oas": -11.3579,
+        "wal": 0.230137,
+        "dv01": 0.002282109,
+        "isin": "US912797TP29",
+        "cusip": "912797TP2",
+        "price": 99.1705764,
+        "yield": 3.604316,
+        "ticker": "US",
+        "cSpread": 16.641,
+        "cdYield": 3.584403,
+        "pyLevel": "99.1705764",
+        "zSpread": -11.357899,
+        "duration": 0.23012,
+        "recovery": 37.4,
+        "ziSpread": -3.086707,
+        "znSpread": -14.335467,
+        "assetSwap": -33.801,
+        "benchmark": "US  4.0 05/28",
+        "convexity": 0.0017,
+        "curveDate": "2026-04-30",
+        "curveType": "RFRSwap",
+        "fullPrice": 99.1705764,
+        "securityID": "912797TP",
+        "spreadDV01": 0,
+        "tsyCurveID": "USDq0430",
+        "accruedDays": 0,
+        "description": "US TREASURY",
+        "grossSpread": -5.5756,
+        "optionValue": 0,
+        "pricingDate": "2026-04-30",
+        "swapCurveID": "SOFq430",
+        "currentYield": 0,
+        "effectiveWAL": 0.2306,
+        "maturityDate": "2026-07-23",
+        "securityType": "BOND",
+        "volModelType": "MarketWSkew",
+        "yieldToWorst": 3.604316,
+        "convexityCost": 0,
+        "currentCoupon": 0,
+        "discountYield": 3.5547,
+        "effectiveCV01": 0.000011285,
+        "effectiveDV01": 0.002316876,
+        "worstCallDate": "2026-07-23",
+        "cdsAdjustedOAS": -27.249,
+        "effectiveYield": 3.5289,
+        "settlementDate": "2026-04-30",
+        "spreadDuration": 0,
+        "walToWorstCall": 0.230137,
+        "zSpreadToWorst": -14.335,
+        "accruedInterest": 0,
+        "annualizedYield": 3.637,
+        "assetSwapSpread": 3.327,
+        "cdsImpliedPrice": 99.109,
+        "compoundingFreq": 2,
+        "convexityEffect": 0,
+        "dv01ToWorstCall": 0.002282,
+        "spreadConvexity": 0.001625,
+        "yearsToMaturity": 0.2301,
+        "ziWorstCallDate": "2026-07-23",
+        "znWorstCallDate": "2026-07-23",
+        "assetSwapToLibor": {
+          "type": "PAR",
+          "value": -33.8009
+        },
+        "cdsAdjustedYield": 3.46,
+        "economicExposure": 99.170576,
+        "macaulayDuration": 0.232,
+        "spreadToActCurve": -7.1876,
+        "spreadToTsyCurve": -7.1876,
+        "yearsToWorstCall": 0.231,
+        "yieldCurveMargin": -11.3579,
+        "yieldToWorstCall": 3.604316,
+        "effectiveDuration": 0.233625323,
+        "macaulayConvexity": 0.0538,
+        "spreadToBenchmark": -28.2064,
+        "spreadToSwapCurve": -29.8803,
+        "spreadToWorstCall": -6,
+        "effectiveConvexity": 0.001137977,
+        "ffndSpreadDuration": 0,
+        "optionModelCurveID": "SOFq430",
+        "yieldCurveDuration": 0.2336,
+        "durationToWorstCall": 0.2301,
+        "durationToWorstCase": 0.23012,
+        "indexSpreadDuration": 0,
+        "semiAnnualizedYield": 3.604316,
+        "ziSpreadToWorstCall": -3.087,
+        "znSpreadToWorstCall": -14.335,
+        "benchmarkToWorstCall": "US  4.0 05/28",
+        "spreadToRFRSwapCurve": -5.5756,
+        "yearsToFinalMaturity": 0.231,
+        "gnmafnmaSpreadDuration": 0,
+        "spreadDurationTreasury": 0.226429,
+        "dataPartialDurationList": [
+          {
+            "partialDV01": 0.002316876,
+            "partialDuration": 0.2336,
+            "partialDurationYear": 1,
+            "partialDurationPriceUp": 99.11269,
+            "partialDurationPriceDown": 99.228534
+          },
+          {
+            "partialDV01": 0,
+            "partialDuration": 0,
+            "partialDurationYear": 2,
+            "partialDurationPriceUp": 99.170576,
+            "partialDurationPriceDown": 99.170576
+          },
+          {
+            "partialDV01": 0,
+            "partialDuration": 0,
+            "partialDurationYear": 3,
+            "partialDurationPriceUp": 99.170576,
+            "partialDurationPriceDown": 99.170576
+          },
+          {
+            "partialDV01": 0,
+            "partialDuration": 0,
+            "partialDurationYear": 5,
+            "partialDurationPriceUp": 99.170576,
+            "partialDurationPriceDown": 99.170576
+          },
+          {
+            "partialDV01": 0,
+            "partialDuration": 0,
+            "partialDurationYear": 10,
+            "partialDurationPriceUp": 99.170576,
+            "partialDurationPriceDown": 99.170576
+          },
+          {
+            "partialDV01": 0,
+            "partialDuration": 0,
+            "partialDurationYear": 20,
+            "partialDurationPriceUp": 99.170576,
+            "partialDurationPriceDown": 99.170576
+          },
+          {
+            "partialDV01": 0,
+            "partialDuration": 0,
+            "partialDurationYear": 30,
+            "partialDurationPriceUp": 99.170576,
+            "partialDurationPriceDown": 99.170576
+          }
+        ],
+        "fundedEffectiveDuration": 0.233625,
+        "effectiveDurationPriceUp": 99.11269,
+        "fundedEffectiveConvexity": 0.001138,
+        "effectiveDurationPriceDown": 99.228534,
+        "spreadToActCurveToWorstCall": -7.1876,
+        "currentCouponSpreadConvexity": 0,
+        "spreadToBenchmarkToWorstCall": -28.2064,
+        "currentCouponSpreadSensitivity": 0
+      },
+      "securityID": "912797TP"
+    }
+  ]
+}
+
+
+{
+  "input": [
+    {
+      "identifier": "912797TP2",
+      "horizonInfo": [
+        {
+          "level": "0",
+          "scenarioRef": {
+            "$ref": "/sys/scenario/Par/-200?timing=Immediate&reinvestmentRate=Default&swapSpreadConst=false"
+          }
+        }
+      ],
+      "curve": {
+        "curveType": "SWAP_RFR"
+      },
+      "horizonPYMethod": "OAS Change",
+      "settlementInfo": {
+        "prepay": {
+          "rate": "",
+          "type": "CPY"
+        },
+        "level": "99.1705764",
+        "settlementDate": "2026-04-30"
+      },
+      "assumeCall": false
+    }
+  ],
+  "globalSettings": {
+    "pricingDate": "2026-04-30",
+    "horizonDays": "0",
+    "horizonMonths": "0",
+    "calcHorizonEffectiveMeasures": true
+  }
+}
+
+
+{
+  "meta": {
+    "status": "DONE",
+    "requestId": "R-749782714",
+    "timeStamp": "2026-06-12T12:04:13Z",
+    "responseType": "SCENARIO_CALC",
+    "resultsStatus": "ALL"
+  },
+  "results": [
+    {
+      "isin": "US912797TP29",
+      "cusip": "912797TP2",
+      "ticker": "US",
+      "scenario": {
+        "horizon": [
+          {
+            "oas": -11.3579,
+            "wal": 0.2306,
+            "price": 99.63622,
+            "yield": 1.5734,
+            "balance": 1,
+            "pylevel": "0.000000",
+            "duration": 0.2302,
+            "fullPrice": 99.63622,
+            "returnCode": 0,
+            "scenarioID": "/sys/scenario/Par/-200/1",
+            "spreadDV01": 0,
+            "actualPrice": 99.636,
+            "grossSpread": -7.9795,
+            "horizonDays": 0,
+            "marketValue": 99.63622,
+            "optionValue": 0,
+            "totalReturn": 0.46953773,
+            "dollarReturn": 0.46564327,
+            "effectiveWAL": 0.231,
+            "convexityCost": 0,
+            "effectiveCV01": 0.000011,
+            "effectiveDV01": 0.002339615,
+            "nominalSpread": -7.9795,
+            "effectiveYield": 1.5549,
+            "interestReturn": 0,
+            "settlementDate": "2026-04-30",
+            "spreadDuration": 0,
+            "accruedInterest": 0,
+            "actualFullPrice": 99.636,
+            "horizonPYMethod": "OAS Change",
+            "interestPayment": 0,
+            "principalReturn": 0.46953773,
+            "underlyingPrice": 0,
+            "principalPayment": 0,
+            "reinvestmentRate": 1.676192,
+            "yieldCurveMargin": -11.3579,
+            "effectiveCallDate": "0",
+            "effectiveDuration": 0.2348,
+            "effectiveConvexity": 0.0011,
+            "reinvestmentAmount": 0,
+            "actualAccruedInterest": 0
+          }
+        ],
+        "settlement": {
+          "oas": -11.3579,
+          "psa": 0,
+          "wal": 0.2306,
+          "price": 99.1705764,
+          "yield": 3.6043,
+          "fullPrice": 99.170576,
+          "volatility": 13,
+          "grossSpread": -5.5756,
+          "optionValue": 0,
+          "pricingDate": "2026-04-30",
+          "forwardYield": 0,
+          "staticSpread": 0,
+          "effectiveDV01": 0.002316876,
+          "nominalSpread": 0,
+          "settlementDate": "2026-04-30",
+          "accruedInterest": 0,
+          "reinvestmentRate": 3.676192,
+          "yieldCurveMargin": 0,
+          "effectiveDuration": 0.2336,
+          "effectiveConvexity": 0.0011
+        }
+      },
+      "returnCode": 0,
+      "securityID": "912797TP",
+      "description": "US TREASURY",
+      "maturityDate": "2026-07-23",
+      "securityType": "BOND",
+      "currentCoupon": 0
+    }
+  ]
+}
+
