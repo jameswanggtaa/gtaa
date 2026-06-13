@@ -2299,3 +2299,355 @@ Treasu
   ]
 }
 
+Agency CMO
+
+4.48	2.53	8.49	0.29	0.065	 48,975 	0.03	0.06	0.17	0.96	3.62	3.37	0.30	9.6	4.7	22	47	0.74	3.0	#SPILL!	#SPILL!	#SPILL!	#SPILL!	#SPILL!	7.33	0.07	13.34	8.01	0.07	6.64	8.82	0.06	-6.41	8.89	0.06	-12.41
+
+
+=YBSCEN("912797TP2",99.1705764,"2026-04-30","EffectiveDurationAtHorizon","RFRSwap","2026-04-30","","","CPY","",0,0,"Immediate","ParShift|N",-200,"OAS Change",0,"","EFF",,,,"Default",,,,"Default",,,,)
+
+=YBPRICE("3136BDL55",76.97223,2025-04-30,"","RFRSwap",2025-04-30,"LMMSOFRFLAT","","Model",100,"PDUR7")
+
+{
+  "input": [
+    {
+      "identifier": "3136BDL55",
+      "floaterSettings": {},
+      "extraSettings": {
+        "includePartials": true
+      },
+      "level": "76.97223",
+      "curve": {
+        "curveType": "SWAP_RFR"
+      },
+      "prepaySettings": {
+        "rate": "100",
+        "type": "Model"
+      },
+      "settlementDate": "2025-04-30",
+      "volatility": {
+        "type": "LMMSOFRFLAT"
+      }
+    }
+  ],
+  "globalSettings": {
+    "pricingDate": "2025-04-30"
+  }
+}
+
+
+{
+  "meta": {
+    "status": "DONE",
+    "requestId": "R-750146786",
+    "timeStamp": "2026-06-13T15:33:46Z",
+    "responseType": "PY_CALC",
+    "resultsStatus": "ALL"
+  },
+  "results": [
+    {
+      "py": {
+        "oas": 34.6813,
+        "wal": 9.696878,
+        "dv01": 0.058970157,
+        "isin": "US3136BDL557",
+        "cusip": "3136BDL55",
+        "price": 76.97223,
+        "yield": 4.414796,
+        "ticker": "FNMA21.2",
+        "cdYield": 0,
+        "cmmType": 100,
+        "pyLevel": "76.97223",
+        "zSpread": 64.212975,
+        "duration": 7.651216,
+        "ziSpread": 9.461161,
+        "znSpread": 64.212975,
+        "benchmark": "10 yr",
+        "className": "CE",
+        "convexity": 0.9403,
+        "curveDate": "2025-04-30",
+        "curveType": "RFRSwap",
+        "fullPrice": 77.07292444,
+        "modelCode": 2501,
+        "creditLoss": 0,
+        "prepayRate": 100,
+        "prepayType": "VEC",
+        "securityID": "3136BDL5",
+        "spreadDV01": 0.060252942,
+        "tsyCurveID": "USDp0430",
+        "accruedDays": 29,
+        "description": "FEDERAL NATIONAL MORTGAGE ASSOCIATION 2021-2 CE",
+        "grossSpread": 78.4252,
+        "pricingDate": "2025-04-30",
+        "swapCurveID": "SOFp430",
+        "currentYield": 1.624,
+        "effectiveWAL": 10.0618,
+        "maturityDate": "2051-02-25",
+        "nextCallDate": "2050-12-25",
+        "securityType": "CMO",
+        "staticSpread": 64.213,
+        "volModelType": "LMMSOFRFLAT",
+        "yieldToWorst": 4.414796,
+        "convexityCost": 22.4082,
+        "currentCoupon": 1.25,
+        "effectiveCV01": 0.003558504,
+        "effectiveDV01": 0.065250762,
+        "cmoProcessTime": 15,
+        "effectiveYield": 4.2802,
+        "settlementDate": "2025-04-30",
+        "spreadDuration": 7.817654,
+        "accruedInterest": 0.10069444,
+        "annualizedYield": 4.464,
+        "compoundingFreq": 2,
+        "convexityEffect": -22.4082,
+        "dataPpmProjList": [
+          {
+            "oneYear": 51.176,
+            "longTerm": 78.0209,
+            "oneMonth": 58.433,
+            "sixMonth": 53.422,
+            "prepayType": "PSA",
+            "threeMonth": 56.831
+          },
+          {
+            "oneYear": 3.0706,
+            "longTerm": 4.6813,
+            "oneMonth": 3.506,
+            "sixMonth": 3.205,
+            "prepayType": "CPR",
+            "threeMonth": 3.41
+          },
+          {
+            "oneYear": 2.9034,
+            "longTerm": 4.5874,
+            "oneMonth": 3.308,
+            "sixMonth": 3.024,
+            "prepayType": "VPR",
+            "threeMonth": 3.22
+          },
+          {
+            "oneYear": 0.1717,
+            "longTerm": 0.1004,
+            "oneMonth": 0.204,
+            "sixMonth": 0.186,
+            "prepayType": "CDR",
+            "threeMonth": 0.196
+          },
+          {
+            "oneYear": 2.0826,
+            "longTerm": 3.3621,
+            "oneMonth": 2.482,
+            "sixMonth": 2.207,
+            "prepayType": "Turnover",
+            "threeMonth": 2.396
+          },
+          {
+            "oneYear": 0.4444,
+            "longTerm": 0.8446,
+            "oneMonth": 0.427,
+            "sixMonth": 0.435,
+            "prepayType": "Curtail",
+            "threeMonth": 0.43
+          },
+          {
+            "oneYear": 0.3941,
+            "longTerm": 0.3951,
+            "oneMonth": 0.42,
+            "sixMonth": 0.401,
+            "prepayType": "Refi",
+            "threeMonth": 0.414
+          },
+          {
+            "oneYear": 0.3941,
+            "longTerm": 0.3951,
+            "oneMonth": 0.42,
+            "sixMonth": 0.401,
+            "prepayType": "RefiCashout",
+            "threeMonth": 0.414
+          },
+          {
+            "oneYear": 0,
+            "longTerm": 0.0005,
+            "oneMonth": 0,
+            "sixMonth": 0,
+            "prepayType": "RefiRateterm",
+            "threeMonth": 0
+          },
+          {
+            "oneYear": 0,
+            "longTerm": 0.0005,
+            "oneMonth": 0,
+            "sixMonth": 0,
+            "prepayType": "RefiCredit",
+            "threeMonth": 0
+          },
+          {
+            "oneYear": 2.8532,
+            "longTerm": 4.233,
+            "oneMonth": 3.339,
+            "sixMonth": 3.018,
+            "prepayType": "FwdCPR",
+            "threeMonth": 3.233
+          },
+          {
+            "oneYear": 0.1716,
+            "longTerm": 0.0991,
+            "oneMonth": 0.204,
+            "sixMonth": 0.186,
+            "prepayType": "FwdCDR",
+            "threeMonth": 0.196
+          },
+          {
+            "oneYear": 2.6858,
+            "longTerm": 4.1401,
+            "oneMonth": 3.141,
+            "sixMonth": 2.836,
+            "prepayType": "FwdVPR",
+            "threeMonth": 3.042
+          },
+          {
+            "oneYear": 2.0235,
+            "longTerm": 3.1626,
+            "oneMonth": 2.459,
+            "sixMonth": 2.169,
+            "prepayType": "FwdVPRTurnover",
+            "threeMonth": 2.366
+          },
+          {
+            "oneYear": 0.4339,
+            "longTerm": 0.7492,
+            "oneMonth": 0.424,
+            "sixMonth": 0.429,
+            "prepayType": "FwdVPRCurtail",
+            "threeMonth": 0.426
+          },
+          {
+            "oneYear": 0.2419,
+            "longTerm": 0.232,
+            "oneMonth": 0.275,
+            "sixMonth": 0.253,
+            "prepayType": "FwdVPRRefi",
+            "threeMonth": 0.266
+          },
+          {
+            "oneYear": 0,
+            "longTerm": 0.0005,
+            "oneMonth": 0,
+            "sixMonth": 0,
+            "prepayType": "FwdVPRRefiRateterm",
+            "threeMonth": 0
+          },
+          {
+            "oneYear": 0.2419,
+            "longTerm": 0.232,
+            "oneMonth": 0.275,
+            "sixMonth": 0.253,
+            "prepayType": "FwdVPRRefiCashout",
+            "threeMonth": 0.266
+          }
+        ],
+        "forwardMeasures": {
+          "wal": 9.979742,
+          "yield": 4.325964,
+          "margin": 57.09,
+          "cumulativeLoss": 0,
+          "cumulativeDefaults": 0
+        },
+        "nextPaymentDate": "2025-05-25",
+        "spreadConvexity": 0.979934,
+        "yearsToMaturity": 25.6528,
+        "yieldToNextCall": 4.414796,
+        "economicExposure": 77.072924,
+        "macaulayDuration": 7.8201,
+        "settleDateFactor": 0.79503122,
+        "spreadToActCurve": 24.5643,
+        "spreadToTsyCurve": 26.0457,
+        "yieldCurveMargin": 57.0896,
+        "yieldToWorstCall": 4.414796,
+        "effectiveDuration": 8.466106415,
+        "macaulayConvexity": 94.3198,
+        "spreadToBenchmark": 76.8579,
+        "spreadToSwapCurve": 49.8962,
+        "spreadToWorstCall": 78,
+        "currentAccrualDate": "2025-04-01",
+        "effectiveConvexity": 0.461706098,
+        "moatsCurrentCoupon": 5.495,
+        "optionModelCurveID": "SOFp430",
+        "yieldCurveDuration": 8.4661,
+        "benchmarkToNextCall": "30 yr",
+        "durationToWorstCase": 7.651216,
+        "semiAnnualizedYield": 4.414796,
+        "spreadToRFRSwapCurve": 78.4252,
+        "yearsToFinalMaturity": 25.819,
+        "spreadDurationTreasury": 7.817654,
+        "dataPartialDurationList": [
+          {
+            "partialDV01": 0.000558386,
+            "partialDuration": 0.0724,
+            "partialDurationYear": 1,
+            "partialDurationPriceUp": 76.958314,
+            "partialDurationPriceDown": 76.986233
+          },
+          {
+            "partialDV01": 0.000274713,
+            "partialDuration": 0.0356,
+            "partialDurationYear": 2,
+            "partialDurationPriceUp": 76.965561,
+            "partialDurationPriceDown": 76.979297
+          },
+          {
+            "partialDV01": 0.001083856,
+            "partialDuration": 0.1406,
+            "partialDurationYear": 3,
+            "partialDurationPriceUp": 76.944289,
+            "partialDurationPriceDown": 76.998482
+          },
+          {
+            "partialDV01": 0.006875136,
+            "partialDuration": 0.892,
+            "partialDurationYear": 5,
+            "partialDurationPriceUp": 76.79378,
+            "partialDurationPriceDown": 77.137537
+          },
+          {
+            "partialDV01": 0.02701008,
+            "partialDuration": 3.5045,
+            "partialDurationYear": 10,
+            "partialDurationPriceUp": 76.278598,
+            "partialDurationPriceDown": 77.629102
+          },
+          {
+            "partialDV01": 0.026720772,
+            "partialDuration": 3.4669,
+            "partialDurationYear": 20,
+            "partialDurationPriceUp": 76.277439,
+            "partialDurationPriceDown": 77.613477
+          },
+          {
+            "partialDV01": 0.002836226,
+            "partialDuration": 0.368,
+            "partialDurationYear": 30,
+            "partialDurationPriceUp": 76.895863,
+            "partialDurationPriceDown": 77.037675
+          }
+        ],
+        "fundedEffectiveDuration": 8.466106,
+        "effectiveDurationPriceUp": 75.352082,
+        "fundedEffectiveConvexity": 0.461706,
+        "lastPrincipalPaymentDate": "2050-12-25",
+        "firstPrincipalPaymentDate": "2025-05-25",
+        "effectiveDurationPriceDown": 78.61462,
+        "spreadToActCurveToNextCall": -26.7494,
+        "spreadToTsyCurveToNextCall": -26.7494,
+        "spreadToBenchmarkToNextCall": 60.4109,
+        "spreadToSwapCurveToNextCall": 60.4109,
+        "principalWritedownCreditLoss": 0,
+        "cumulativeLossToNextCallCurrent": 0,
+        "cumulativeLossToNextCallOriginal": 0,
+        "cumulativeDefaultToNextCallCurrent": 0,
+        "cumulativeDefaultToNextCallOriginal": 0
+      },
+      "securityID": "3136BDL5"
+    }
+  ]
+}
