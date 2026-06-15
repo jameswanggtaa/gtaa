@@ -2685,5 +2685,33 @@ Agency CMO
   }
 }
 
+=YBPRICE("3136BDZA9.cmo",88.30841,2026-04-30,"","RFRSwap",2026-04-30,"LMMSOFRFLAT","","CPY",0,"PDUR7")
 
+=YBSCEN("3136BDZA9.cmo",88.30841,"2026-04-30","EffectiveDurationAtHorizon","RFRSwap","2026-04-30","LMMSOFRFLAT","","CPY",0,0,0,"Immediate","ParShift|N",-200,"OAS Change",0,0,"EFF",,,,"Default",,,,"Default",,,,)
 
+{
+  "input": [
+    {
+      "identifier": "3136BDZA9.cmo",
+      "floaterSettings": {},
+      "extraSettings": {
+        "includePartials": true
+      },
+      "level": "88.30841",
+      "curve": {
+        "curveType": "SWAP_RFR"
+      },
+      "prepaySettings": {
+        "rate": "0",
+        "type": "CPY"
+      },
+      "settlementDate": "2026-04-30",
+      "volatility": {
+        "type": "LMMSOFRFLAT"
+      }
+    }
+  ],
+  "globalSettings": {
+    "pricingDate": "2026-04-30"
+  }
+}
