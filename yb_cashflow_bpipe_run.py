@@ -1,11 +1,11 @@
 """
-Run Yield Book CPR=0 cash flows for all CUSIPs in Holding_0626.txt
+Run Yield Book CPR=0 cash flows for all CUSIPs in Holding_0626.csv
 and write a Bloomberg BPIPE reply file.
 
 Example:
   python yb_cashflow_bpipe_run.py
   python yb_cashflow_bpipe_run.py --limit 10
-  python yb_cashflow_bpipe_run.py --batch-size 10 --holdings Holding_0626.txt
+  python yb_cashflow_bpipe_run.py --batch-size 10 --holdings Holding_0626.csv
 """
 
 from __future__ import annotations
@@ -26,6 +26,7 @@ from yb_cashflow_bpipe_test import (
     cashflow_ok,
     get_access_token,
     make_http_session,
+    parse_holdings,
     prior_business_dates,
 )
 from yb_cashflow_to_bpipe import (
@@ -36,35 +37,6 @@ from yb_cashflow_to_bpipe import (
 )
 
 Holding = Tuple[str, float]
-
-
-def parse_holdings(path: Path, limit: Optional[int] = None) -> List[Holding]:
-    text = path.read_text(encoding="utf-8", errors="replace")
-    lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
-    if len(lines) < 2:
-        raise ValueError(f"No data rows in {path}")
-    rows: List[Holding] = []
-    for ln in lines[1:]:
-        parts = ln.split("\t")
-        if len(parts) < 3:
-            parts = [p for p in ln.replace(",", "").split() if p]
-            if len(parts) < 2:
-                continue
-            cusip, par_raw = parts[0], parts[-1]
-        else:
-            cusip = parts[0].strip()
-            par_raw = parts[2].strip().replace(",", "").replace(" ", "")
-        if not cusip:
-            continue
-        try:
-            par = float(par_raw) / 1000.0
-        except ValueError:
-            print(f"[WARN] skip bad par amount for {cusip!r}: {par_raw!r}")
-            continue
-        rows.append((cusip, par))
-        if limit is not None and len(rows) >= limit:
-            break
-    return rows
 
 
 def build_batch_payload(
@@ -350,12 +322,12 @@ def run(
 
 def main() -> None:
     ap = argparse.ArgumentParser(
-        description="YB CPR=0 cash flows for Holding_0626 -> BPIPE file"
+        description="YB CPR=0 cash flows for Holding_0626.csv -> BPIPE file"
     )
     ap.add_argument(
         "--holdings",
-        default="Holding_0626.txt",
-        help="Holdings file (CUSIP / Total Issued / Par Amount)",
+        default="Holding_0626.csv",
+        help="Holdings CSV (CUSIP, Total Issued, Par Amount)",
     )
     ap.add_argument(
         "--out",
