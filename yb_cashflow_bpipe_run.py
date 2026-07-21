@@ -1,11 +1,11 @@
 """
-Run Yield Book CPR=0 cash flows for all CUSIPs in Holding_0626.csv
+Run Yield Book CPR=0 cash flows for CUSIPs in holdings file
 and write a Bloomberg BPIPE reply file.
 
 Example:
   python yb_cashflow_bpipe_run.py
-  python yb_cashflow_bpipe_run.py --limit 10
-  python yb_cashflow_bpipe_run.py --batch-size 10 --holdings Holding_0626.csv
+  python yb_cashflow_bpipe_run.py --limit 3
+  python yb_cashflow_bpipe_run.py --batch-size 10 --holdings Holding_0720_2026.txt
 """
 
 from __future__ import annotations
@@ -31,10 +31,14 @@ from yb_cashflow_bpipe_test import (
 )
 from yb_cashflow_to_bpipe import (
     build_bpipe_file_from_rows,
+    build_bpipe_footer,
     build_bpipe_header,
     format_data_line,
     resolve_cusip,
 )
+
+# Warn (do not fail) when |full-dollar par - sum(principalPayment)| exceeds this.
+PRINCIPAL_SUM_WARN_TOL = 100.0
 
 Holding = Tuple[str, float]
 
@@ -68,6 +72,37 @@ def cf_has_payments(cf: Any) -> bool:
         and isinstance(cf.get("dataPaymentList"), list)
         and len(cf["dataPaymentList"]) > 0
     )
+
+
+def sum_principal_payments(cf: Dict[str, Any]) -> float:
+    payments = cf.get("dataPaymentList") or []
+    total = 0.0
+    for p in payments:
+        if isinstance(p, dict):
+            total += float(p.get("principalPayment") or 0.0)
+    return total
+
+
+def check_par_equals_principal_sum(
+    cusip: str,
+    par_api: float,
+    cf: Dict[str, Any],
+    *,
+    warn_tol: float = PRINCIPAL_SUM_WARN_TOL,
+) -> Tuple[bool, str]:
+    """
+    Compare full-dollar parAmount (API units × 1000) to sum of principalPayment
+    over all periods. Returns (needs_warning, message). Warning when |diff| > warn_tol.
+    """
+    expected = par_api * 1000.0
+    actual = sum_principal_payments(cf)
+    signed_diff = actual - expected
+    abs_diff = abs(signed_diff)
+    msg = (
+        f"parAmount={expected:.2f} sum(principalPayment)={actual:.2f} "
+        f"diff={signed_diff:+.4f} abs_diff={abs_diff:.2f}"
+    )
+    return abs_diff > warn_tol, msg
 
 
 def resolve_asof_date(
@@ -202,12 +237,18 @@ def run(
     out_fh = None
     if write_incremental:
         out_fh = out_path.open("w", encoding="utf-8", newline="\n")
-        out_fh.write(build_bpipe_header())
+        out_fh.write(
+            build_bpipe_header(
+                rundate=datetime.now().strftime("%Y%m%d"),
+                reply_filename=out_path.name,
+            )
+        )
         out_fh.flush()
 
     batches = chunks(holdings, batch_size)
     t0 = time.time()
     done = 0
+    warn_n = 0
     for b_idx, batch in enumerate(batches, start=1):
         token, fetched_at = maybe_refresh_token(
             session, token, fetched_at, token_refresh_sec
@@ -289,7 +330,24 @@ def run(
                     }
                 )
                 continue
-            # Keep request CUSIP (9-char) on the BPIPE line
+            # Keep request CUSIP (9-char) on the BPIPE line; warn-only on principal sum drift
+            needs_warn, par_msg = check_par_equals_principal_sum(cusip, par, cf)
+            if needs_warn:
+                warn_n += 1
+                warn_text = (
+                    f"WARN: |parAmount - sum(principalPayment)| > "
+                    f"${PRINCIPAL_SUM_WARN_TOL:.0f}; {par_msg}"
+                )
+                print(f"[WARN] {cusip}: {warn_text}")
+                error_rows.append(
+                    {
+                        "CUSIP": cusip,
+                        "parAmount": f"{par:.3f}",
+                        "error": warn_text,
+                    }
+                )
+            else:
+                print(f"[OK]   {cusip}: {par_msg}")
             success_rows.append((cusip, cf))
             if out_fh is not None:
                 out_fh.write(format_data_line(cusip, cf) + "\n")
@@ -300,14 +358,19 @@ def run(
         err_n = len(error_rows)
         elapsed = time.time() - t0
         print(
-            f"[INFO] progress {done}/{len(holdings)}  ok={ok_n} err={err_n}  "
+            f"[INFO] progress {done}/{len(holdings)}  ok={ok_n} err={err_n} warn={warn_n}  "
             f"elapsed={elapsed:.1f}s  {elapsed / max(done, 1):.2f}s/CUSIP"
         )
 
     if out_fh is not None:
+        out_fh.write(build_bpipe_footer())
         out_fh.close()
     else:
-        text = build_bpipe_file_from_rows(success_rows)
+        text = build_bpipe_file_from_rows(
+            success_rows,
+            rundate=datetime.now().strftime("%Y%m%d"),
+            reply_filename=out_path.name,
+        )
         out_path.write_text(text, encoding="utf-8")
 
     with errors_path.open("w", encoding="utf-8", newline="") as f:
@@ -316,28 +379,33 @@ def run(
         w.writerows(error_rows)
 
     print(f"[INFO] BPIPE output -> {out_path}  ({len(success_rows)} securities)")
-    print(f"[INFO] errors       -> {errors_path}  ({len(error_rows)} securities)")
+    print(
+        f"[INFO] errors       -> {errors_path}  "
+        f"({len(error_rows)} rows, {warn_n} principal-sum warnings)"
+    )
     print(f"[INFO] elapsed {time.time() - t0:.1f}s")
 
 
 def main() -> None:
+    today = datetime.now().strftime("%Y%m%d")
+    default_out = f"outputData{today}.txt"
     ap = argparse.ArgumentParser(
-        description="YB CPR=0 cash flows for Holding_0626.csv -> BPIPE file"
+        description="YB CPR=0 cash flows for holdings -> BPIPE file"
     )
     ap.add_argument(
         "--holdings",
-        default="Holding_0626.csv",
-        help="Holdings CSV (CUSIP, Total Issued, Par Amount)",
+        default="Holding_0720_2026.txt",
+        help="Holdings file (CSV/TSV): CUSIP + Par Amount, or Total Issued + Pool Factor",
     )
     ap.add_argument(
         "--out",
-        default="MQu_YBkCflowUpldr.out",
-        help="BPIPE output filename",
+        default=default_out,
+        help=f"BPIPE output filename (default: {default_out})",
     )
     ap.add_argument(
         "--errors",
         default="yb_cashflow_errors.csv",
-        help="CSV of failed CUSIPs",
+        help="CSV of failed CUSIPs and principal-sum warnings (|diff| > $100)",
     )
     ap.add_argument("--limit", type=int, default=None, help="Process only first N CUSIPs")
     ap.add_argument("--batch-size", type=int, default=10, help="CUSIPs per API request")

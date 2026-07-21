@@ -114,9 +114,11 @@ def build_bpipe_header(
     *,
     rundate: Optional[str] = None,
     generated_at: Optional[datetime] = None,
+    reply_filename: Optional[str] = None,
 ) -> str:
     now = generated_at or datetime.now().astimezone()
     rd = rundate or now.strftime("%Y%m%d")
+    reply = reply_filename or f"outputData{rd}.txt"
     utc = now.astimezone(timezone.utc)
     hour12 = utc.hour % 12 or 12
     ampm = "AM" if utc.hour < 12 else "PM"
@@ -146,7 +148,7 @@ CLOSINGVALUES=yes
 REPORT=yes
 PROGRAMFLAG=oneshot
 FIRMNAME=MTB
-REPLYFILENAME=MQu_YBkCflowUpldr.out
+REPLYFILENAME={reply}
 HISTORICAL=yes
 DERIVED=yes
 SECMASTER=yes
@@ -167,17 +169,47 @@ START-OF-DATA
 """
 
 
+def _tz_abbr(now: datetime) -> str:
+    tz_name = now.tzname() or "EDT"
+    if "Daylight" in tz_name or tz_name.upper() == "EDT":
+        return "EDT"
+    if "Standard" in tz_name or tz_name.upper() == "EST":
+        return "EST"
+    return tz_name
+
+
+def build_bpipe_footer(*, finished_at: Optional[datetime] = None) -> str:
+    """
+    Footer sample:
+      END-OF-DATA
+      TIMEFINISHED=Thu Jun 23 16:37:12 EDT 2026
+      END-OF-FILE
+    """
+    now = finished_at or datetime.now().astimezone()
+    tz_abbr = _tz_abbr(now)
+    timefinished = (
+        f"{now.strftime('%a %b')} {now.day} {now.strftime('%H:%M:%S')} {tz_abbr} {now.year}"
+    )
+    return f"END-OF-DATA\nTIMEFINISHED={timefinished}\nEND-OF-FILE\n"
+
+
 def build_bpipe_file_from_rows(
     rows: List[tuple[str, Dict[str, Any]]],
     *,
     rundate: Optional[str] = None,
     generated_at: Optional[datetime] = None,
+    reply_filename: Optional[str] = None,
 ) -> str:
     if not rows:
         raise ValueError("No cashFlow rows to format")
-    header = build_bpipe_header(rundate=rundate, generated_at=generated_at)
+    header = build_bpipe_header(
+        rundate=rundate,
+        generated_at=generated_at,
+        reply_filename=reply_filename,
+    )
     body = "\n".join(format_data_line(cusip, cf) for cusip, cf in rows)
-    return header + body + "\n"
+    footer = build_bpipe_footer(finished_at=datetime.now().astimezone())
+    return header + body + "\n" + footer
 
 
 def build_bpipe_file(
@@ -186,9 +218,15 @@ def build_bpipe_file(
     request_cusips: Optional[List[str]] = None,
     rundate: Optional[str] = None,
     generated_at: Optional[datetime] = None,
+    reply_filename: Optional[str] = None,
 ) -> str:
     rows = extract_cashflows(data, request_cusips=request_cusips)
-    return build_bpipe_file_from_rows(rows, rundate=rundate, generated_at=generated_at)
+    return build_bpipe_file_from_rows(
+        rows,
+        rundate=rundate,
+        generated_at=generated_at,
+        reply_filename=reply_filename,
+    )
 
 
 def request_cusips_from_payload(data: Dict[str, Any]) -> Optional[List[str]]:
@@ -197,6 +235,8 @@ def request_cusips_from_payload(data: Dict[str, Any]) -> Optional[List[str]]:
 
 
 def main() -> None:
+    today = datetime.now().strftime("%Y%m%d")
+    default_out = f"outputData{today}.txt"
     ap = argparse.ArgumentParser(description="Format YB cash-flow JSON as BPIPE reply file")
     ap.add_argument(
         "--json",
@@ -205,8 +245,8 @@ def main() -> None:
     )
     ap.add_argument(
         "--out",
-        default="MQu_YBkCflowUpldr_YB_first3.out",
-        help="Output BPIPE-format file",
+        default=default_out,
+        help=f"Output BPIPE-format file (default: {default_out})",
     )
     ap.add_argument(
         "--cusips",
@@ -219,7 +259,12 @@ def main() -> None:
     data = json.loads(path.read_text(encoding="utf-8"))
     cusips = [c.strip() for c in args.cusips.split(",") if c.strip()] or None
 
-    text = build_bpipe_file(data, request_cusips=cusips)
+    text = build_bpipe_file(
+        data,
+        request_cusips=cusips,
+        rundate=today,
+        reply_filename=Path(args.out).name,
+    )
     out = Path(args.out)
     out.write_text(text, encoding="utf-8")
     n = text.count("|FLD UNKNOWN|")

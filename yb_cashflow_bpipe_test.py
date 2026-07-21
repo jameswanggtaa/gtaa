@@ -32,42 +32,121 @@ RAW_OUT = Path(__file__).with_name("yb_cashflow_test_raw.json")
 MAX_DATE_LOOKBACK = 10  # weekdays
 
 
+def _parse_number(raw: str) -> float:
+    return float(str(raw).strip().replace(",", "").replace(" ", "").replace('"', ""))
+
+
 def _parse_par_amount(raw: str) -> float:
-    return float(str(raw).strip().replace(",", "").replace(" ", "").replace('"', "")) / 1000.0
+    """Full-dollar Par Amount -> Yield Book API units (÷ 1000)."""
+    return _parse_number(raw) / 1000.0
+
+
+def is_valid_cusip(cusip: str) -> bool:
+    """Reject blank, non-9-char, and TBA-style identifiers (e.g. 250513TBA)."""
+    c = (cusip or "").strip().upper()
+    if len(c) != 9 or not c.isalnum():
+        return False
+    if "TBA" in c:
+        return False
+    return True
+
+
+def _field_map(fieldnames: List[str]) -> Dict[str, str]:
+    return {name.strip().lower(): name for name in fieldnames}
+
+
+def _resolve_par_from_row(
+    row: Dict[str, str],
+    field_map: Dict[str, str],
+    cusip: str,
+) -> Optional[float]:
+    """
+    Prefer Par Amount when present; else Total Issued * ABS(Pool Factor today).
+    Returns Yield Book API units (full dollars ÷ 1000), or None to skip.
+    """
+    par_key = field_map.get("par amount") or field_map.get("paramount")
+    issued_key = (
+        field_map.get("total issued")
+        or field_map.get("totalissued")
+        or field_map.get("total_issued")
+    )
+    pf_key = None
+    for k, orig in field_map.items():
+        if "pool factor" in k:
+            pf_key = orig
+            break
+
+    if par_key and str(row.get(par_key) or "").strip():
+        return _parse_par_amount(str(row.get(par_key) or ""))
+
+    if issued_key and pf_key:
+        issued = _parse_number(str(row.get(issued_key) or ""))
+        pf = _parse_number(str(row.get(pf_key) or ""))
+        if pf == 0.0:
+            print(f"[WARN] skip {cusip}: pool factor is 0")
+            return None
+        return (issued * pf) / 1000.0
+
+    raise ValueError(
+        "need Par Amount, or Total Issued + Pool Factor columns; "
+        f"got {list(field_map.values())}"
+    )
 
 
 def parse_holdings(path: Path, limit: Optional[int] = None) -> List[Tuple[str, float]]:
-    """Read CUSIP + Par Amount/1000 from holdings CSV (or legacy TSV .txt)."""
+    """
+    Read CUSIP + parAmount (÷1000) from holdings CSV/TSV.
+
+    Supports:
+      - CUSIP, Par Amount
+      - CUSIP, Total Issued, ABS(Pool Factor today)  -> par = issued * factor
+    Skips pool factor = 0 and non-CUSIP IDs (e.g. TBA).
+    """
     rows: List[Tuple[str, float]] = []
     suffix = path.suffix.lower()
+
+    def _consume_dict_rows(reader: csv.DictReader) -> None:
+        if not reader.fieldnames:
+            raise ValueError(f"No header in {path}")
+        fmap = _field_map(list(reader.fieldnames))
+        cusip_key = fmap.get("cusip")
+        if not cusip_key:
+            raise ValueError(f"{path} must have CUSIP column; got {reader.fieldnames}")
+        for row in reader:
+            cusip = str(row.get(cusip_key) or "").strip()
+            if not cusip:
+                continue
+            if not is_valid_cusip(cusip):
+                print(f"[WARN] skip non-CUSIP id: {cusip!r}")
+                continue
+            try:
+                par = _resolve_par_from_row(row, fmap, cusip)
+            except ValueError as e:
+                print(f"[WARN] skip {cusip!r}: {e}")
+                continue
+            if par is None:
+                continue
+            if par <= 0:
+                print(f"[WARN] skip {cusip}: non-positive parAmount={par}")
+                continue
+            rows.append((cusip, par))
+            if limit is not None and len(rows) >= limit:
+                return
+
     if suffix == ".csv":
         with path.open("r", encoding="utf-8", errors="replace", newline="") as f:
-            reader = csv.DictReader(f)
-            if not reader.fieldnames:
-                raise ValueError(f"No header in {path}")
-            # tolerate slight header spacing differences
-            field_map = {name.strip().lower(): name for name in reader.fieldnames}
-            cusip_key = field_map.get("cusip")
-            par_key = field_map.get("par amount") or field_map.get("paramount")
-            if not cusip_key or not par_key:
-                raise ValueError(
-                    f"{path} must have CUSIP and Par Amount columns; got {reader.fieldnames}"
-                )
-            for row in reader:
-                cusip = str(row.get(cusip_key) or "").strip()
-                if not cusip:
-                    continue
-                try:
-                    par = _parse_par_amount(str(row.get(par_key) or ""))
-                except ValueError:
-                    print(f"[WARN] skip bad par amount for {cusip!r}: {row.get(par_key)!r}")
-                    continue
-                rows.append((cusip, par))
-                if limit is not None and len(rows) >= limit:
-                    break
+            _consume_dict_rows(csv.DictReader(f))
         return rows
 
-    # Legacy tab/space-delimited .txt
+    # Tab-delimited .txt (Holding_*.txt) — try DictReader with excel-tab first
+    with path.open("r", encoding="utf-8", errors="replace", newline="") as f:
+        sample = f.read(4096)
+        f.seek(0)
+        if "\t" in sample:
+            _consume_dict_rows(csv.DictReader(f, delimiter="\t"))
+            return rows
+
+    # Legacy space-delimited fallback (Par Amount in last numeric column)
     text = path.read_text(encoding="utf-8", errors="replace")
     lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
     for ln in lines[1:]:
@@ -82,10 +161,33 @@ def parse_holdings(path: Path, limit: Optional[int] = None) -> List[Tuple[str, f
             par_raw = parts[2]
         if not cusip:
             continue
+        if not is_valid_cusip(cusip):
+            print(f"[WARN] skip non-CUSIP id: {cusip!r}")
+            continue
         try:
-            par = _parse_par_amount(par_raw)
+            # If header-style pool-factor file fell through, col2 may be factor not par.
+            # Prefer issued*factor when 4+ cols look like Holding_0720 layout.
+            if len(parts) >= 3:
+                try:
+                    issued = _parse_number(parts[1])
+                    pf = _parse_number(parts[2])
+                    # Heuristic: pool factor is typically <= 1.5
+                    if 0 <= pf <= 1.5 and issued > 1000:
+                        if pf == 0.0:
+                            print(f"[WARN] skip {cusip}: pool factor is 0")
+                            continue
+                        par = (issued * pf) / 1000.0
+                    else:
+                        par = _parse_par_amount(par_raw)
+                except ValueError:
+                    par = _parse_par_amount(par_raw)
+            else:
+                par = _parse_par_amount(par_raw)
         except ValueError:
             print(f"[WARN] skip bad par amount for {cusip!r}: {par_raw!r}")
+            continue
+        if par <= 0:
+            print(f"[WARN] skip {cusip}: non-positive parAmount={par}")
             continue
         rows.append((cusip, par))
         if limit is not None and len(rows) >= limit:
