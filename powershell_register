@@ -1,0 +1,4 @@
+$action  = New-ScheduledTaskAction -Execute "powershell.exe" `
+  -Argument "-NoProfile -ExecutionPolicy Bypass -File `"C:\Users\zhiyu\OneDrive\Documents\python\run_tba_report.ps1`""
+$trigger = New-ScheduledTaskTrigger -Weekly -DaysOfWeek Monday,Tuesday,Wednesday,Thursday,Friday -At 7:30am
+Register-ScheduledTask -TaskName "YB TBA Daily Report" -Action $action -Trigger $trigger -RunLevel Limited
