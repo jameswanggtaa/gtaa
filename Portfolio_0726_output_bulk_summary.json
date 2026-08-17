@@ -1,0 +1,16 @@
+{
+  "input": "C:\\Users\\zhiyu\\OneDrive\\Documents\\python\\Portfolio_0726_input.csv",
+  "output": "C:\\Users\\zhiyu\\OneDrive\\Documents\\python\\Portfolio_0726_output.csv",
+  "curve_date": "2026-07-31",
+  "batches_ok": 607,
+  "batches_fail": 5,
+  "cusips_filled": 3775,
+  "final_retry_rounds": 3,
+  "final_failed_cusips": 0,
+  "rows_with_forward_yield": 3814,
+  "elapsed_min": 2175.7,
+  "estimated_min": 4571.0,
+  "large_batch_size": 50,
+  "small_batch_size": 4,
+  "workers": 4
+}

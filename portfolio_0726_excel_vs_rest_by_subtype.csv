@@ -1,0 +1,12 @@
+﻿sub_type,excel_rows,compared,missing_in_rest,sec_exact,sec_close,sec_mismatch,sec_exact_pct,sec_close_pct,sec_mismatch_pct,fld_exact,fld_close,fld_mismatch,fld_both_blank,fld_checks_active
+Agency CMBS,191,191,0,72,118,1,37.7,61.8,0.5,7090,164,9,759,7263
+Agency CMO,170,170,0,122,1,47,71.8,0.6,27.6,6706,56,128,250,6890
+Agency MBS 10yr,10,10,0,0,10,0,0.0,100.0,0.0,378,19,0,23,397
+Agency MBS 15yr,469,469,0,73,391,5,15.6,83.4,1.1,18162,571,9,956,18742
+Agency MBS 20yr,45,45,0,2,38,5,4.4,84.4,11.1,1737,53,10,90,1800
+Agency MBS 30yr,980,980,0,517,457,6,52.8,46.6,0.6,38533,638,11,1978,39182
+Agency MBS ARM,391,391,0,62,234,95,15.9,59.8,24.3,15306,367,118,631,15791
+Agency MBS Other,55,55,0,20,35,0,36.4,63.6,0.0,2149,44,0,117,2193
+MUNI,1459,1458,1,381,664,413,26.1,45.5,28.3,54572,5344,1176,144,61092
+Structured Agency CMBS,18,18,0,5,9,4,27.8,50.0,22.2,665,11,8,72,684
+Treasuries,26,26,0,24,1,1,92.3,3.8,3.8,1089,1,2,0,1092

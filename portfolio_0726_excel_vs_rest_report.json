@@ -1,0 +1,1200 @@
+{
+  "excel_file": "C:\\Users\\zhiyu\\OneDrive\\Documents\\python\\securities_0726_1.txt",
+  "rest_file": "C:\\Users\\zhiyu\\OneDrive\\Documents\\python\\Portfolio_0726_output.csv",
+  "compare_fields": [
+    "Forward Yield",
+    "Prospective Yield",
+    "Effective Duration",
+    "Effective Convexity",
+    "Effective DV01",
+    "Dollar Duration",
+    "1YR",
+    "2YR",
+    "3YR",
+    "5YR",
+    "10YR",
+    "20YR",
+    "30YR",
+    "Average Life",
+    "LT CPR",
+    "OAS",
+    "Z-Spread",
+    "Factor",
+    "Life CPR",
+    "GWAC",
+    "WALA",
+    "WALS",
+    "MaxServicerName",
+    "MaxServicerPercent",
+    "Eff. Dur",
+    "DV01",
+    "Dollar Return",
+    "Eff. Dur.1",
+    "DV01.1",
+    "Dollar Return.1",
+    "Eff. Dur.2",
+    "DV01.2",
+    "Dollar Return.2",
+    "Eff. Dur.3",
+    "DV01.3",
+    "Dollar Return.3",
+    "Eff. Dur.4",
+    "DV01.4",
+    "Dollar Return.4",
+    "Eff. Dur.5",
+    "DV01.5",
+    "Dollar Return.5"
+  ],
+  "definition": {
+    "exact": "within tight tol (rounding)",
+    "close": "within looser tol (timing/minor model drift)",
+    "mismatch": "outside close tol",
+    "security_tier": "exact if all fields exact/blank; close if any close and no mismatch; else mismatch"
+  },
+  "excel_curve_dates": {
+    "7/31/2026": 3840
+  },
+  "rest_curve_dates": {
+    "7/31/2026": 3846
+  },
+  "excel_prepay_models": {
+    "Model2501": 2122,
+    "Muni": 1454,
+    "CPY": 207,
+    "Default": 26
+  },
+  "summary_by_sub_type": [
+    {
+      "sub_type": "Agency CMBS",
+      "excel_rows": 191,
+      "compared": 191,
+      "missing_in_rest": 0,
+      "sec_exact": 72,
+      "sec_close": 118,
+      "sec_mismatch": 1,
+      "sec_exact_pct": 37.7,
+      "sec_close_pct": 61.8,
+      "sec_mismatch_pct": 0.5,
+      "fld_exact": 7090,
+      "fld_close": 164,
+      "fld_mismatch": 9,
+      "fld_both_blank": 759,
+      "fld_checks_active": 7263
+    },
+    {
+      "sub_type": "Agency CMO",
+      "excel_rows": 170,
+      "compared": 170,
+      "missing_in_rest": 0,
+      "sec_exact": 122,
+      "sec_close": 1,
+      "sec_mismatch": 47,
+      "sec_exact_pct": 71.8,
+      "sec_close_pct": 0.6,
+      "sec_mismatch_pct": 27.6,
+      "fld_exact": 6706,
+      "fld_close": 56,
+      "fld_mismatch": 128,
+      "fld_both_blank": 250,
+      "fld_checks_active": 6890
+    },
+    {
+      "sub_type": "Agency MBS 10yr",
+      "excel_rows": 10,
+      "compared": 10,
+      "missing_in_rest": 0,
+      "sec_exact": 0,
+      "sec_close": 10,
+      "sec_mismatch": 0,
+      "sec_exact_pct": 0.0,
+      "sec_close_pct": 100.0,
+      "sec_mismatch_pct": 0.0,
+      "fld_exact": 378,
+      "fld_close": 19,
+      "fld_mismatch": 0,
+      "fld_both_blank": 23,
+      "fld_checks_active": 397
+    },
+    {
+      "sub_type": "Agency MBS 15yr",
+      "excel_rows": 469,
+      "compared": 469,
+      "missing_in_rest": 0,
+      "sec_exact": 73,
+      "sec_close": 391,
+      "sec_mismatch": 5,
+      "sec_exact_pct": 15.6,
+      "sec_close_pct": 83.4,
+      "sec_mismatch_pct": 1.1,
+      "fld_exact": 18162,
+      "fld_close": 571,
+      "fld_mismatch": 9,
+      "fld_both_blank": 956,
+      "fld_checks_active": 18742
+    },
+    {
+      "sub_type": "Agency MBS 20yr",
+      "excel_rows": 45,
+      "compared": 45,
+      "missing_in_rest": 0,
+      "sec_exact": 2,
+      "sec_close": 38,
+      "sec_mismatch": 5,
+      "sec_exact_pct": 4.4,
+      "sec_close_pct": 84.4,
+      "sec_mismatch_pct": 11.1,
+      "fld_exact": 1737,
+      "fld_close": 53,
+      "fld_mismatch": 10,
+      "fld_both_blank": 90,
+      "fld_checks_active": 1800
+    },
+    {
+      "sub_type": "Agency MBS 30yr",
+      "excel_rows": 980,
+      "compared": 980,
+      "missing_in_rest": 0,
+      "sec_exact": 517,
+      "sec_close": 457,
+      "sec_mismatch": 6,
+      "sec_exact_pct": 52.8,
+      "sec_close_pct": 46.6,
+      "sec_mismatch_pct": 0.6,
+      "fld_exact": 38533,
+      "fld_close": 638,
+      "fld_mismatch": 11,
+      "fld_both_blank": 1978,
+      "fld_checks_active": 39182
+    },
+    {
+      "sub_type": "Agency MBS ARM",
+      "excel_rows": 391,
+      "compared": 391,
+      "missing_in_rest": 0,
+      "sec_exact": 62,
+      "sec_close": 234,
+      "sec_mismatch": 95,
+      "sec_exact_pct": 15.9,
+      "sec_close_pct": 59.8,
+      "sec_mismatch_pct": 24.3,
+      "fld_exact": 15306,
+      "fld_close": 367,
+      "fld_mismatch": 118,
+      "fld_both_blank": 631,
+      "fld_checks_active": 15791
+    },
+    {
+      "sub_type": "Agency MBS Other",
+      "excel_rows": 55,
+      "compared": 55,
+      "missing_in_rest": 0,
+      "sec_exact": 20,
+      "sec_close": 35,
+      "sec_mismatch": 0,
+      "sec_exact_pct": 36.4,
+      "sec_close_pct": 63.6,
+      "sec_mismatch_pct": 0.0,
+      "fld_exact": 2149,
+      "fld_close": 44,
+      "fld_mismatch": 0,
+      "fld_both_blank": 117,
+      "fld_checks_active": 2193
+    },
+    {
+      "sub_type": "MUNI",
+      "excel_rows": 1459,
+      "compared": 1458,
+      "missing_in_rest": 1,
+      "sec_exact": 381,
+      "sec_close": 664,
+      "sec_mismatch": 413,
+      "sec_exact_pct": 26.1,
+      "sec_close_pct": 45.5,
+      "sec_mismatch_pct": 28.3,
+      "fld_exact": 54572,
+      "fld_close": 5344,
+      "fld_mismatch": 1176,
+      "fld_both_blank": 144,
+      "fld_checks_active": 61092
+    },
+    {
+      "sub_type": "Structured Agency CMBS",
+      "excel_rows": 18,
+      "compared": 18,
+      "missing_in_rest": 0,
+      "sec_exact": 5,
+      "sec_close": 9,
+      "sec_mismatch": 4,
+      "sec_exact_pct": 27.8,
+      "sec_close_pct": 50.0,
+      "sec_mismatch_pct": 22.2,
+      "fld_exact": 665,
+      "fld_close": 11,
+      "fld_mismatch": 8,
+      "fld_both_blank": 72,
+      "fld_checks_active": 684
+    },
+    {
+      "sub_type": "Treasuries",
+      "excel_rows": 26,
+      "compared": 26,
+      "missing_in_rest": 0,
+      "sec_exact": 24,
+      "sec_close": 1,
+      "sec_mismatch": 1,
+      "sec_exact_pct": 92.3,
+      "sec_close_pct": 3.8,
+      "sec_mismatch_pct": 3.8,
+      "fld_exact": 1089,
+      "fld_close": 1,
+      "fld_mismatch": 2,
+      "fld_both_blank": 0,
+      "fld_checks_active": 1092
+    }
+  ],
+  "totals": {
+    "compared": 3813,
+    "sec_exact": 1278,
+    "sec_close": 1958,
+    "sec_mismatch": 577,
+    "fld_exact": 146387,
+    "fld_close": 7268,
+    "fld_mismatch": 1471,
+    "missing_in_rest": 1,
+    "sec_exact_pct": 33.5,
+    "sec_close_pct": 51.4,
+    "sec_mismatch_pct": 15.1,
+    "fld_exact_pct": 94.4,
+    "fld_close_pct": 4.7,
+    "fld_mismatch_pct": 0.9
+  },
+  "mismatch_reasons": {
+    "Duration / partials delta (model or curve timing)": 583,
+    "Core risk metric delta (curve timing / model / settlement)": 579,
+    "Excel blank / REST filled": 297,
+    "Scenario shock delta": 11,
+    "Indic/prepay field (Excel placeholder 0 vs REST, or model CPR)": 1
+  },
+  "mismatch_reasons_by_sub_type": {
+    "Agency CMBS": {
+      "Duration / partials delta (model or curve timing)": 3,
+      "Scenario shock delta": 3,
+      "Core risk metric delta (curve timing / model / settlement)": 2,
+      "Indic/prepay field (Excel placeholder 0 vs REST, or model CPR)": 1
+    },
+    "Agency CMO": {
+      "Excel blank / REST filled": 128
+    },
+    "Agency MBS 15yr": {
+      "Core risk metric delta (curve timing / model / settlement)": 5,
+      "Duration / partials delta (model or curve timing)": 4
+    },
+    "Agency MBS 20yr": {
+      "Core risk metric delta (curve timing / model / settlement)": 5,
+      "Duration / partials delta (model or curve timing)": 5
+    },
+    "Agency MBS 30yr": {
+      "Duration / partials delta (model or curve timing)": 6,
+      "Core risk metric delta (curve timing / model / settlement)": 5
+    },
+    "Agency MBS ARM": {
+      "Excel blank / REST filled": 114,
+      "Duration / partials delta (model or curve timing)": 2,
+      "Core risk metric delta (curve timing / model / settlement)": 2
+    },
+    "MUNI": {
+      "Duration / partials delta (model or curve timing)": 562,
+      "Core risk metric delta (curve timing / model / settlement)": 559,
+      "Excel blank / REST filled": 47,
+      "Scenario shock delta": 8
+    },
+    "Structured Agency CMBS": {
+      "Excel blank / REST filled": 8
+    },
+    "Treasuries": {
+      "Core risk metric delta (curve timing / model / settlement)": 1,
+      "Duration / partials delta (model or curve timing)": 1
+    }
+  },
+  "top_mismatch_fields": [
+    [
+      "OAS",
+      378
+    ],
+    [
+      "Dollar Duration",
+      215
+    ],
+    [
+      "Average Life",
+      134
+    ],
+    [
+      "Effective Duration",
+      133
+    ],
+    [
+      "10YR",
+      99
+    ],
+    [
+      "5YR",
+      95
+    ],
+    [
+      "WALS",
+      84
+    ],
+    [
+      "Effective Convexity",
+      69
+    ],
+    [
+      "MaxServicerName",
+      66
+    ],
+    [
+      "MaxServicerPercent",
+      66
+    ],
+    [
+      "Prospective Yield",
+      46
+    ],
+    [
+      "Forward Yield",
+      28
+    ],
+    [
+      "GWAC",
+      16
+    ],
+    [
+      "WALA",
+      16
+    ],
+    [
+      "Effective DV01",
+      4
+    ]
+  ],
+  "close_examples": [
+    {
+      "sub_type": "Agency CMBS",
+      "cusip": "3132WWYD8",
+      "field": "Factor",
+      "excel": "0.86",
+      "rest": "0.86482907"
+    },
+    {
+      "sub_type": "Agency CMBS",
+      "cusip": "3132XFJ25",
+      "field": "Average Life",
+      "excel": "6.2",
+      "rest": "6.1528"
+    },
+    {
+      "sub_type": "Agency CMBS",
+      "cusip": "3132XFJ41",
+      "field": "Average Life",
+      "excel": "3.2",
+      "rest": "3.2361"
+    },
+    {
+      "sub_type": "Agency CMBS",
+      "cusip": "3132XFJX7",
+      "field": "Average Life",
+      "excel": "6.2",
+      "rest": "6.1528"
+    },
+    {
+      "sub_type": "Agency CMBS",
+      "cusip": "3132XFJY5",
+      "field": "Average Life",
+      "excel": "6.2",
+      "rest": "6.1528"
+    },
+    {
+      "sub_type": "Agency CMBS",
+      "cusip": "3132XFN38",
+      "field": "Average Life",
+      "excel": "2.2",
+      "rest": "2.1528"
+    },
+    {
+      "sub_type": "Agency CMBS",
+      "cusip": "3132XG5S1",
+      "field": "Average Life",
+      "excel": "5.1",
+      "rest": "5.0718"
+    },
+    {
+      "sub_type": "Agency CMBS",
+      "cusip": "3132XGJS6",
+      "field": "Average Life",
+      "excel": "4.1",
+      "rest": "4.0785"
+    },
+    {
+      "sub_type": "Agency CMBS",
+      "cusip": "3132XGJS6",
+      "field": "Factor",
+      "excel": "0.99",
+      "rest": "0.98737144"
+    },
+    {
+      "sub_type": "Agency CMBS",
+      "cusip": "3132XGQN9",
+      "field": "Average Life",
+      "excel": "6.0",
+      "rest": "5.96"
+    },
+    {
+      "sub_type": "Agency CMBS",
+      "cusip": "3132XGRE8",
+      "field": "Average Life",
+      "excel": "6.0",
+      "rest": "6.0372"
+    },
+    {
+      "sub_type": "Agency CMBS",
+      "cusip": "3132XGRS7",
+      "field": "Average Life",
+      "excel": "3.3",
+      "rest": "3.2568"
+    },
+    {
+      "sub_type": "Agency CMBS",
+      "cusip": "3132XGRS7",
+      "field": "Factor",
+      "excel": "0.98",
+      "rest": "0.98247739"
+    },
+    {
+      "sub_type": "Agency CMBS",
+      "cusip": "3132XGRW8",
+      "field": "Average Life",
+      "excel": "3.3",
+      "rest": "3.3489"
+    },
+    {
+      "sub_type": "Agency CMBS",
+      "cusip": "3132XGRW8",
+      "field": "Factor",
+      "excel": "0.99",
+      "rest": "0.99472574"
+    },
+    {
+      "sub_type": "Agency CMBS",
+      "cusip": "3132XGST4",
+      "field": "Factor",
+      "excel": "0.99",
+      "rest": "0.99362268"
+    },
+    {
+      "sub_type": "Agency CMBS",
+      "cusip": "3132XGSZ0",
+      "field": "Factor",
+      "excel": "0.99",
+      "rest": "0.99398851"
+    },
+    {
+      "sub_type": "Agency CMBS",
+      "cusip": "3132XGT48",
+      "field": "Factor",
+      "excel": "0.99",
+      "rest": "0.99398852"
+    },
+    {
+      "sub_type": "Agency CMBS",
+      "cusip": "3132XHLC6",
+      "field": "Average Life",
+      "excel": "4.8",
+      "rest": "4.7741"
+    },
+    {
+      "sub_type": "Agency CMBS",
+      "cusip": "3132XHLC6",
+      "field": "Factor",
+      "excel": "0.91",
+      "rest": "0.91233998"
+    },
+    {
+      "sub_type": "Agency CMBS",
+      "cusip": "3132XKR66",
+      "field": "Average Life",
+      "excel": "2.6",
+      "rest": "2.63"
+    },
+    {
+      "sub_type": "Agency CMBS",
+      "cusip": "3132XKR74",
+      "field": "Average Life",
+      "excel": "2.6",
+      "rest": "2.63"
+    },
+    {
+      "sub_type": "Agency CMBS",
+      "cusip": "3132XKR82",
+      "field": "Average Life",
+      "excel": "2.9",
+      "rest": "2.8662"
+    },
+    {
+      "sub_type": "Agency CMBS",
+      "cusip": "3132XKRY5",
+      "field": "Average Life",
+      "excel": "2.6",
+      "rest": "2.63"
+    },
+    {
+      "sub_type": "Agency CMBS",
+      "cusip": "3132XKTB3",
+      "field": "Average Life",
+      "excel": "3.0",
+      "rest": "2.9704"
+    }
+  ],
+  "mismatch_examples": [
+    {
+      "sub_type": "Agency CMBS",
+      "cusip": "36200C6W0",
+      "field": "Prospective Yield",
+      "excel": "4.851518",
+      "rest": "4.758111",
+      "reason": "Core risk metric delta (curve timing / model / settlement)"
+    },
+    {
+      "sub_type": "Agency CMBS",
+      "cusip": "36200C6W0",
+      "field": "Effective Duration",
+      "excel": "2.823123693",
+      "rest": "2.588392973",
+      "reason": "Duration / partials delta (model or curve timing)"
+    },
+    {
+      "sub_type": "Agency CMBS",
+      "cusip": "36200C6W0",
+      "field": "Dollar Duration",
+      "excel": "86",
+      "rest": "78.94397046",
+      "reason": "Duration / partials delta (model or curve timing)"
+    },
+    {
+      "sub_type": "Agency CMBS",
+      "cusip": "36200C6W0",
+      "field": "5YR",
+      "excel": "1.3894",
+      "rest": "1.1505",
+      "reason": "Duration / partials delta (model or curve timing)"
+    },
+    {
+      "sub_type": "Agency CMBS",
+      "cusip": "36200C6W0",
+      "field": "Average Life",
+      "excel": "3.1986",
+      "rest": "2.8704",
+      "reason": "Core risk metric delta (curve timing / model / settlement)"
+    },
+    {
+      "sub_type": "Agency CMBS",
+      "cusip": "36200C6W0",
+      "field": "LT CPR",
+      "excel": "9.5874",
+      "rest": "14.3535",
+      "reason": "Indic/prepay field (Excel placeholder 0 vs REST, or model CPR)"
+    },
+    {
+      "sub_type": "Agency CMBS",
+      "cusip": "36200C6W0",
+      "field": "Eff. Dur",
+      "excel": "2.8012",
+      "rest": "2.5245",
+      "reason": "Scenario shock delta"
+    },
+    {
+      "sub_type": "Agency CMBS",
+      "cusip": "36200C6W0",
+      "field": "Eff. Dur.1",
+      "excel": "2.7447",
+      "rest": "2.4772",
+      "reason": "Scenario shock delta"
+    },
+    {
+      "sub_type": "Agency CMBS",
+      "cusip": "36200C6W0",
+      "field": "Eff. Dur.2",
+      "excel": "2.7333",
+      "rest": "2.4772",
+      "reason": "Scenario shock delta"
+    },
+    {
+      "sub_type": "Agency CMO",
+      "cusip": "3136BDL55",
+      "field": "GWAC",
+      "excel": "#SPILL!",
+      "rest": "2.8879",
+      "reason": "Excel blank / REST filled"
+    },
+    {
+      "sub_type": "Agency CMO",
+      "cusip": "3136BDL55",
+      "field": "WALA",
+      "excel": "#SPILL!",
+      "rest": "68",
+      "reason": "Excel blank / REST filled"
+    },
+    {
+      "sub_type": "Agency CMO",
+      "cusip": "3136BDL55",
+      "field": "WALS",
+      "excel": "#SPILL!",
+      "rest": "322344.7188",
+      "reason": "Excel blank / REST filled"
+    },
+    {
+      "sub_type": "Agency CMO",
+      "cusip": "3136BDL55",
+      "field": "MaxServicerName",
+      "excel": "#SPILL!",
+      "rest": "NEW RESIDENTIAL MORTGAGE LLC",
+      "reason": "Excel blank / REST filled"
+    },
+    {
+      "sub_type": "Agency CMO",
+      "cusip": "3136BDL55",
+      "field": "MaxServicerPercent",
+      "excel": "#SPILL!",
+      "rest": "44.7401",
+      "reason": "Excel blank / REST filled"
+    },
+    {
+      "sub_type": "Agency CMO",
+      "cusip": "3136BDM39",
+      "field": "MaxServicerName",
+      "excel": "#SPILL!",
+      "rest": "CROSSCOUNTRY MORTGAGE, LLC",
+      "reason": "Excel blank / REST filled"
+    },
+    {
+      "sub_type": "Agency CMO",
+      "cusip": "3136BDM39",
+      "field": "MaxServicerPercent",
+      "excel": "#SPILL!",
+      "rest": "27.5954",
+      "reason": "Excel blank / REST filled"
+    },
+    {
+      "sub_type": "Agency CMO",
+      "cusip": "3136BDV54",
+      "field": "MaxServicerName",
+      "excel": "#SPILL!",
+      "rest": "TH MSR HOLDINGS LLC",
+      "reason": "Excel blank / REST filled"
+    },
+    {
+      "sub_type": "Agency CMO",
+      "cusip": "3136BDV54",
+      "field": "MaxServicerPercent",
+      "excel": "#SPILL!",
+      "rest": "40.0717",
+      "reason": "Excel blank / REST filled"
+    },
+    {
+      "sub_type": "Agency CMO",
+      "cusip": "3136BFCB7",
+      "field": "MaxServicerName",
+      "excel": "#SPILL!",
+      "rest": "JPMORGAN CHASE BANK, NATIONAL ASSOCIATIO",
+      "reason": "Excel blank / REST filled"
+    },
+    {
+      "sub_type": "Agency CMO",
+      "cusip": "3136BFCB7",
+      "field": "MaxServicerPercent",
+      "excel": "#SPILL!",
+      "rest": "92.1481",
+      "reason": "Excel blank / REST filled"
+    },
+    {
+      "sub_type": "Agency CMO",
+      "cusip": "3136BR3G0",
+      "field": "MaxServicerName",
+      "excel": "#SPILL!",
+      "rest": "LAKEVIEW LOAN SERVICING, LLC",
+      "reason": "Excel blank / REST filled"
+    },
+    {
+      "sub_type": "Agency CMO",
+      "cusip": "3136BR3G0",
+      "field": "MaxServicerPercent",
+      "excel": "#SPILL!",
+      "rest": "21.7997",
+      "reason": "Excel blank / REST filled"
+    },
+    {
+      "sub_type": "Agency CMO",
+      "cusip": "3136BR4M6",
+      "field": "MaxServicerName",
+      "excel": "#SPILL!",
+      "rest": "ROCKET MORTGAGE, LLC",
+      "reason": "Excel blank / REST filled"
+    },
+    {
+      "sub_type": "Agency CMO",
+      "cusip": "3136BR4M6",
+      "field": "MaxServicerPercent",
+      "excel": "#SPILL!",
+      "rest": "23.6701",
+      "reason": "Excel blank / REST filled"
+    },
+    {
+      "sub_type": "Agency CMO",
+      "cusip": "3136BSA47",
+      "field": "GWAC",
+      "excel": "#SPILL!",
+      "rest": "6.9841",
+      "reason": "Excel blank / REST filled"
+    },
+    {
+      "sub_type": "Agency CMO",
+      "cusip": "3136BSA47",
+      "field": "WALA",
+      "excel": "#SPILL!",
+      "rest": "24",
+      "reason": "Excel blank / REST filled"
+    },
+    {
+      "sub_type": "Agency CMO",
+      "cusip": "3136BSA47",
+      "field": "WALS",
+      "excel": "#SPILL!",
+      "rest": "258502.0156",
+      "reason": "Excel blank / REST filled"
+    },
+    {
+      "sub_type": "Agency CMO",
+      "cusip": "3136BSA47",
+      "field": "MaxServicerName",
+      "excel": "#SPILL!",
+      "rest": "AMERIHOME MORTGAGE COMPANY, LLC",
+      "reason": "Excel blank / REST filled"
+    },
+    {
+      "sub_type": "Agency CMO",
+      "cusip": "3136BSA47",
+      "field": "MaxServicerPercent",
+      "excel": "#SPILL!",
+      "rest": "52.8754",
+      "reason": "Excel blank / REST filled"
+    },
+    {
+      "sub_type": "Agency CMO",
+      "cusip": "3136BSC29",
+      "field": "MaxServicerName",
+      "excel": "#SPILL!",
+      "rest": "TRUIST BANK",
+      "reason": "Excel blank / REST filled"
+    },
+    {
+      "sub_type": "Agency CMO",
+      "cusip": "3136BSC29",
+      "field": "MaxServicerPercent",
+      "excel": "#SPILL!",
+      "rest": "25.5302",
+      "reason": "Excel blank / REST filled"
+    },
+    {
+      "sub_type": "Agency CMO",
+      "cusip": "3136BSC60",
+      "field": "MaxServicerName",
+      "excel": "#SPILL!",
+      "rest": "TRUIST BANK",
+      "reason": "Excel blank / REST filled"
+    },
+    {
+      "sub_type": "Agency CMO",
+      "cusip": "3136BSC60",
+      "field": "MaxServicerPercent",
+      "excel": "#SPILL!",
+      "rest": "25.5302",
+      "reason": "Excel blank / REST filled"
+    },
+    {
+      "sub_type": "Agency CMO",
+      "cusip": "3136BSK46",
+      "field": "MaxServicerName",
+      "excel": "#SPILL!",
+      "rest": "LAKEVIEW LOAN SERVICING, LLC",
+      "reason": "Excel blank / REST filled"
+    },
+    {
+      "sub_type": "Agency CMO",
+      "cusip": "3136BSK46",
+      "field": "MaxServicerPercent",
+      "excel": "#SPILL!",
+      "rest": "22.7733",
+      "reason": "Excel blank / REST filled"
+    },
+    {
+      "sub_type": "Agency CMO",
+      "cusip": "3136BSM77",
+      "field": "GWAC",
+      "excel": "#SPILL!",
+      "rest": "6.9822",
+      "reason": "Excel blank / REST filled"
+    },
+    {
+      "sub_type": "Agency CMO",
+      "cusip": "3136BSM77",
+      "field": "WALA",
+      "excel": "#SPILL!",
+      "rest": "26",
+      "reason": "Excel blank / REST filled"
+    },
+    {
+      "sub_type": "Agency CMO",
+      "cusip": "3136BSM77",
+      "field": "WALS",
+      "excel": "#SPILL!",
+      "rest": "272854.9375",
+      "reason": "Excel blank / REST filled"
+    },
+    {
+      "sub_type": "Agency CMO",
+      "cusip": "3136BSM77",
+      "field": "MaxServicerName",
+      "excel": "#SPILL!",
+      "rest": "PENNYMAC LOAN SERVICES, LLC",
+      "reason": "Excel blank / REST filled"
+    },
+    {
+      "sub_type": "Agency CMO",
+      "cusip": "3136BSM77",
+      "field": "MaxServicerPercent",
+      "excel": "#SPILL!",
+      "rest": "37.6232",
+      "reason": "Excel blank / REST filled"
+    },
+    {
+      "sub_type": "Agency CMO",
+      "cusip": "3136BSVV4",
+      "field": "MaxServicerName",
+      "excel": "#SPILL!",
+      "rest": "LESS THAN 1%",
+      "reason": "Excel blank / REST filled"
+    },
+    {
+      "sub_type": "Agency CMO",
+      "cusip": "3136BSVV4",
+      "field": "MaxServicerPercent",
+      "excel": "#SPILL!",
+      "rest": "28.356",
+      "reason": "Excel blank / REST filled"
+    },
+    {
+      "sub_type": "Agency CMO",
+      "cusip": "3136BSY25",
+      "field": "MaxServicerName",
+      "excel": "#SPILL!",
+      "rest": "AMERIHOME MORTGAGE COMPANY, LLC",
+      "reason": "Excel blank / REST filled"
+    },
+    {
+      "sub_type": "Agency CMO",
+      "cusip": "3136BSY25",
+      "field": "MaxServicerPercent",
+      "excel": "#SPILL!",
+      "rest": "40.5283",
+      "reason": "Excel blank / REST filled"
+    },
+    {
+      "sub_type": "Agency CMO",
+      "cusip": "3136BTJZ7",
+      "field": "MaxServicerName",
+      "excel": "#SPILL!",
+      "rest": "ROCKET MORTGAGE, LLC",
+      "reason": "Excel blank / REST filled"
+    },
+    {
+      "sub_type": "Agency CMO",
+      "cusip": "3136BTJZ7",
+      "field": "MaxServicerPercent",
+      "excel": "#SPILL!",
+      "rest": "19.7543",
+      "reason": "Excel blank / REST filled"
+    },
+    {
+      "sub_type": "Agency CMO",
+      "cusip": "3136BTMG5",
+      "field": "MaxServicerName",
+      "excel": "#SPILL!",
+      "rest": "PENNYMAC CORP",
+      "reason": "Excel blank / REST filled"
+    },
+    {
+      "sub_type": "Agency CMO",
+      "cusip": "3136BTMG5",
+      "field": "MaxServicerPercent",
+      "excel": "#SPILL!",
+      "rest": "24.9743",
+      "reason": "Excel blank / REST filled"
+    },
+    {
+      "sub_type": "Agency CMO",
+      "cusip": "3136BTZA4",
+      "field": "MaxServicerName",
+      "excel": "#SPILL!",
+      "rest": "LESS THAN 1%",
+      "reason": "Excel blank / REST filled"
+    },
+    {
+      "sub_type": "Agency CMO",
+      "cusip": "3136BTZA4",
+      "field": "MaxServicerPercent",
+      "excel": "#SPILL!",
+      "rest": "41.6",
+      "reason": "Excel blank / REST filled"
+    },
+    {
+      "sub_type": "Agency CMO",
+      "cusip": "3136BUWF3",
+      "field": "GWAC",
+      "excel": "#SPILL!",
+      "rest": "6.9242",
+      "reason": "Excel blank / REST filled"
+    },
+    {
+      "sub_type": "Agency CMO",
+      "cusip": "3136BUWF3",
+      "field": "WALA",
+      "excel": "#SPILL!",
+      "rest": "22",
+      "reason": "Excel blank / REST filled"
+    },
+    {
+      "sub_type": "Agency CMO",
+      "cusip": "3136BUWF3",
+      "field": "WALS",
+      "excel": "#SPILL!",
+      "rest": "221744.2969",
+      "reason": "Excel blank / REST filled"
+    },
+    {
+      "sub_type": "Agency CMO",
+      "cusip": "3136BUWF3",
+      "field": "MaxServicerName",
+      "excel": "#SPILL!",
+      "rest": "ROCKET MORTGAGE, LLC",
+      "reason": "Excel blank / REST filled"
+    },
+    {
+      "sub_type": "Agency CMO",
+      "cusip": "3136BUWF3",
+      "field": "MaxServicerPercent",
+      "excel": "#SPILL!",
+      "rest": "14.694",
+      "reason": "Excel blank / REST filled"
+    },
+    {
+      "sub_type": "Agency CMO",
+      "cusip": "3136BUY46",
+      "field": "MaxServicerName",
+      "excel": "#SPILL!",
+      "rest": "ROCKET MORTGAGE, LLC",
+      "reason": "Excel blank / REST filled"
+    },
+    {
+      "sub_type": "Agency CMO",
+      "cusip": "3136BUY46",
+      "field": "MaxServicerPercent",
+      "excel": "#SPILL!",
+      "rest": "14.8419",
+      "reason": "Excel blank / REST filled"
+    },
+    {
+      "sub_type": "Agency CMO",
+      "cusip": "3136BVAL2",
+      "field": "MaxServicerName",
+      "excel": "#SPILL!",
+      "rest": "ROCKET MORTGAGE, LLC",
+      "reason": "Excel blank / REST filled"
+    },
+    {
+      "sub_type": "Agency CMO",
+      "cusip": "3136BVAL2",
+      "field": "MaxServicerPercent",
+      "excel": "#SPILL!",
+      "rest": "16.4251",
+      "reason": "Excel blank / REST filled"
+    },
+    {
+      "sub_type": "Agency CMO",
+      "cusip": "3136BVVM7",
+      "field": "MaxServicerName",
+      "excel": "#SPILL!",
+      "rest": "JPMORGAN CHASE BANK, NATIONAL ASSOCIATIO",
+      "reason": "Excel blank / REST filled"
+    },
+    {
+      "sub_type": "Agency CMO",
+      "cusip": "3136BVVM7",
+      "field": "MaxServicerPercent",
+      "excel": "#SPILL!",
+      "rest": "34.406",
+      "reason": "Excel blank / REST filled"
+    },
+    {
+      "sub_type": "Agency CMO",
+      "cusip": "3136BWLU8",
+      "field": "MaxServicerName",
+      "excel": "#SPILL!",
+      "rest": "ROCKET MORTGAGE, LLC",
+      "reason": "Excel blank / REST filled"
+    },
+    {
+      "sub_type": "Agency CMO",
+      "cusip": "3136BWLU8",
+      "field": "MaxServicerPercent",
+      "excel": "#SPILL!",
+      "rest": "13.2548",
+      "reason": "Excel blank / REST filled"
+    },
+    {
+      "sub_type": "Agency CMO",
+      "cusip": "3137F9L58",
+      "field": "GWAC",
+      "excel": "#SPILL!",
+      "rest": "3.4766",
+      "reason": "Excel blank / REST filled"
+    },
+    {
+      "sub_type": "Agency CMO",
+      "cusip": "3137F9L58",
+      "field": "WALA",
+      "excel": "#SPILL!",
+      "rest": "68",
+      "reason": "Excel blank / REST filled"
+    },
+    {
+      "sub_type": "Agency CMO",
+      "cusip": "3137F9L58",
+      "field": "WALS",
+      "excel": "#SPILL!",
+      "rest": "304814.8125",
+      "reason": "Excel blank / REST filled"
+    },
+    {
+      "sub_type": "Agency CMO",
+      "cusip": "3137F9L58",
+      "field": "MaxServicerName",
+      "excel": "#SPILL!",
+      "rest": "PENNYMAC CORP",
+      "reason": "Excel blank / REST filled"
+    },
+    {
+      "sub_type": "Agency CMO",
+      "cusip": "3137F9L58",
+      "field": "MaxServicerPercent",
+      "excel": "#SPILL!",
+      "rest": "32.2185",
+      "reason": "Excel blank / REST filled"
+    },
+    {
+      "sub_type": "Agency CMO",
+      "cusip": "3137FFF69",
+      "field": "MaxServicerName",
+      "excel": "#SPILL!",
+      "rest": "JPMORGAN CHASE BANK, NATIONAL ASSOCIATIO",
+      "reason": "Excel blank / REST filled"
+    },
+    {
+      "sub_type": "Agency CMO",
+      "cusip": "3137FFF69",
+      "field": "MaxServicerPercent",
+      "excel": "#SPILL!",
+      "rest": "14.98",
+      "reason": "Excel blank / REST filled"
+    },
+    {
+      "sub_type": "Agency CMO",
+      "cusip": "3137FFFL6",
+      "field": "MaxServicerName",
+      "excel": "#SPILL!",
+      "rest": "LESS THAN 1%",
+      "reason": "Excel blank / REST filled"
+    },
+    {
+      "sub_type": "Agency CMO",
+      "cusip": "3137FFFL6",
+      "field": "MaxServicerPercent",
+      "excel": "#SPILL!",
+      "rest": "20.08",
+      "reason": "Excel blank / REST filled"
+    },
+    {
+      "sub_type": "Agency CMO",
+      "cusip": "3137FFHX8",
+      "field": "MaxServicerName",
+      "excel": "#SPILL!",
+      "rest": "LESS THAN 1%",
+      "reason": "Excel blank / REST filled"
+    },
+    {
+      "sub_type": "Agency CMO",
+      "cusip": "3137FFHX8",
+      "field": "MaxServicerPercent",
+      "excel": "#SPILL!",
+      "rest": "14.48",
+      "reason": "Excel blank / REST filled"
+    },
+    {
+      "sub_type": "Agency CMO",
+      "cusip": "3137FYA63",
+      "field": "MaxServicerName",
+      "excel": "#SPILL!",
+      "rest": "LESS THAN 1%",
+      "reason": "Excel blank / REST filled"
+    },
+    {
+      "sub_type": "Agency CMO",
+      "cusip": "3137FYA63",
+      "field": "MaxServicerPercent",
+      "excel": "#SPILL!",
+      "rest": "25.61",
+      "reason": "Excel blank / REST filled"
+    },
+    {
+      "sub_type": "Agency CMO",
+      "cusip": "3137FYGW0",
+      "field": "GWAC",
+      "excel": "#SPILL!",
+      "rest": "4.0093",
+      "reason": "Excel blank / REST filled"
+    },
+    {
+      "sub_type": "Agency CMO",
+      "cusip": "3137FYGW0",
+      "field": "WALA",
+      "excel": "#SPILL!",
+      "rest": "164",
+      "reason": "Excel blank / REST filled"
+    },
+    {
+      "sub_type": "Agency CMO",
+      "cusip": "3137FYGW0",
+      "field": "WALS",
+      "excel": "#SPILL!",
+      "rest": "54872.5",
+      "reason": "Excel blank / REST filled"
+    },
+    {
+      "sub_type": "Agency CMO",
+      "cusip": "3137FYGW0",
+      "field": "MaxServicerName",
+      "excel": "#SPILL!",
+      "rest": "WELLS FARGO BANK, NATIONAL ASSOCIATION",
+      "reason": "Excel blank / REST filled"
+    }
+  ]
+}
