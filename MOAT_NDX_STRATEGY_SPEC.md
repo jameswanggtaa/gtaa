@@ -1,17 +1,29 @@
 # MOAT + Nasdaq-100 Dip-Buying Strategy - Complete Specification
-**Version:** 1.0  
-**Date:** 2026-09-19  
+**Version:** 2.0  
+**Date:** 2026-09-21  
 **File:** MOAT_NDX_STRATEGY_SPEC.md
+
+---
+
+## Changelog
+
+| Version | Date | Changes |
+|---------|------|---------|
+| 1.0 | 2026-09-19 | Initial strategy specification |
+| 2.0 | 2026-09-21 | **Option A:** % of NAV position sizing (replaces fixed $ tranches) |
+| | | **Option B:** Core holding layer - always invested in uptrending stocks |
+| | | **Option C:** Relaxed higher-low rule - only enforced below 9M SMA |
+| | | **Option D:** Trailing stop sell (replaces 9M SMA sell rule) |
 
 ---
 
 ## 1. Strategy Overview
 
 A buy-and-hold dip-buying strategy targeting high-quality "MOAT" stocks from the
-Nasdaq-100 universe. The strategy buys great businesses at a discount (dip from
-52-week high), accumulates in tranches as price falls further, holds while the
-stock is in an uptrend (above 9-month SMA), and sells only when a confirmed
-downtrend emerges. Cash earns money market rates between deployments.
+Nasdaq-100 universe. The strategy maintains a **core holding** in every uptrending
+quality stock (above 9M SMA), then **adds aggressively on dips** using % of NAV
+sizing that grows with the portfolio. Positions are held until a **trailing stop**
+fires, letting winners compound for years. Cash earns money market rates.
 
 ---
 
@@ -76,7 +88,8 @@ Used as a **secondary strategy** for comparison. Selects **top 40 stocks**.
 | Starting capital | $500,000 |
 | Annual injection | +$50,000 on January 1st each year |
 | Idle cash return | Fed Funds rate (`FEDL01 Index`) daily accrual |
-| Per-stock cost cap | $20,000 per dip cycle (see Section 5) |
+| Per-stock max allocation | 10% of current portfolio NAV |
+| Per-cycle max cost | 7.5% of current portfolio NAV |
 | Sold proceeds | Recycled immediately into available cash pool |
 
 ---
@@ -89,101 +102,120 @@ Used as a **secondary strategy** for comparison. Selects **top 40 stocks**.
 
 ---
 
-## 5. Buy Rules - Dip Tranches
+## 5. Buy Rules
 
-### 5.1 Tranche Schedule
-Triggered when `(current_price / 52_week_high - 1)` crosses each threshold:
+### 5.1 Core Holding Layer (Option B - always invested)
 
-| Dip from 52-wk High | Tranche Amount | Cumulative Spent |
-|---------------------|---------------|-----------------|
-| ≥ -20% | $2,000 | $2,000 |
-| ≥ -30% | $3,000 | $5,000 |
-| ≥ -40% | $5,000 | $10,000 |
-| ≥ -50% | $10,000 | $20,000 |
+Any stock in the universe that is **above its 9-month (189-day) SMA** receives
+a **base allocation of 2% of current portfolio NAV**, topped up every ~21 trading
+days. This ensures the portfolio is always invested in the best uptrending stocks
+even when they never dip enough to trigger a dip tranche.
 
-### 5.2 Tranche Rules
+- Core allocation target: **2% of NAV per stock**
+- Checked and topped up every **21 trading days**
+- Core buy fires immediately when a stock enters the universe above its 9M SMA
+- Core position counts toward the 10% per-stock cap
+
+### 5.2 Dip Tranche Schedule (Option A - % of NAV sizing)
+
+Triggered when `(current_price / 52_week_high - 1)` crosses each threshold.
+**Amounts are % of current portfolio NAV** - they grow as the portfolio grows.
+
+| Dip from 52-wk High | % of NAV | Example at $1M NAV | Example at $2M NAV |
+|---------------------|----------|-------------------|-------------------|
+| ≥ -10% | 0.5% | $5,000 | $10,000 |
+| ≥ -20% | 1.0% | $10,000 | $20,000 |
+| ≥ -30% | 2.0% | $20,000 | $40,000 |
+| ≥ -40% | 4.0% | $40,000 | $80,000 |
+| ≥ -50% | 2.5% | $25,000 | $50,000 |
+
+### 5.3 Tranche Rules
 - Each tranche fires **exactly once per dip cycle**
-- Once a tranche fires, it does not re-fire even if price dips further and recovers
-  back through the same threshold
 - If cash available < tranche amount, buy as much as cash allows (partial tranche)
-- Tranches are only triggered if the **Higher-Low Rule** is satisfied (Section 6)
+- Tranches only trigger if the **Higher-Low Rule** is satisfied (Section 6)
 
-### 5.3 Per-Stock Cost Cap
-- **$20,000 maximum cost basis per dip cycle**
-- The cap is **per cycle**, not per stock lifetime:
-  - Cycle 1: spend up to $20K → shares held
-  - Stock makes new 52-week high → cycle resets
-  - Cycle 2: can spend up to $20K again (even while still holding cycle 1 shares)
-  - Total cost basis across cycles can exceed $20K while holding
-- After a full sell and 30-day cooldown, the stock re-enters with a **fresh $20K cap**
+### 5.4 Per-Stock Caps
+- **Maximum total allocation: 10% of NAV per stock** (core + dip tranches combined)
+- **Maximum per dip cycle: 7.5% of NAV** (leaves room for a second cycle)
+- Cap is **per cycle** - resets when stock makes a new 52-week high
+- After a full sell and 30-day cooldown, stock re-enters with a **fresh cap**
 
 ---
 
-## 6. Higher-Low Rule (Uptrend Confirmation)
+## 6. Higher-Low Rule (Relaxed - Option C)
 
-Only buy dip tranches if the current dip is part of an uptrend (higher lows).
+### 6.1 Rule (v2 - Relaxed)
+The higher-low rule is now **context-sensitive** based on the 9M SMA:
 
-### 6.1 Definitions
-- **Dip low:** The lowest closing price reached during a dip cycle
-- **Previous dip low:** The dip low from the most recently completed dip cycle
-- **Dip cycle reset:** Triggered when price makes a new 52-week high
+| Stock position vs 9M SMA | Higher-low rule |
+|--------------------------|----------------|
+| **Above 9M SMA** (uptrend) | **Disabled** - always allow dip buys |
+| **Below 9M SMA** (downtrend) | **Enforced** - require higher low to avoid falling knives |
+| First dip cycle ever | **Disabled** - always buy (no prior low to compare) |
 
-### 6.2 Rule
-- On each new dip cycle, compare the **current dip low** to the **previous dip low**
-- **Buy condition:** current dip low > previous dip low (higher low = uptrend intact)
-- **Skip condition:** current dip low ≤ previous dip low (lower low = potential downtrend)
-- If skipped, **no tranches fire** for that entire dip cycle
-- Previous dip low memory resets when the dip cycle resets (new 52-week high)
+### 6.2 Rationale
+Strong uptrending stocks (NVDA, AAPL, META) regularly make lower dip lows during
+normal corrections while remaining in long-term uptrends. The old strict rule
+prevented buying these dips unnecessarily. Now we only apply the filter when the
+stock is already in a downtrend (below 9M SMA), where falling-knife risk is real.
 
 ### 6.3 Example
 ```
-Peak $100 → dips to $80 (-20%) → buy $2K  [previous dip low = $80]
-Recovers to $110 (new 52-wk high) → RESET  [new peak = $110]
-Dips to $88 (-20% from $110) → $88 > $80 → BUY $2K ✅  [new dip low = $88]
-Recovers to $95 → dips to $76 → $76 < $80 → SKIP ❌
-```
+Stock above 9M SMA:
+  Peak $100 → dips to $80 (-20%) → BUY ✅ (above SMA, rule relaxed)
+  Recovers → dips to $75 → BUY ✅ (still above SMA, lower low ignored)
 
-### 6.4 First Dip
-- The very first dip cycle for a stock has no previous dip low
-- **Always buy** the first qualifying dip (no prior low to compare against)
+Stock below 9M SMA:
+  Peak $100 → dips to $80 (-20%) → BUY ✅ [prev dip low = $80]
+  Recovers to $95 → dips to $76 → SKIP ❌ ($76 < $80, lower low = downtrend)
+```
 
 ---
 
-## 7. Sell Rules
+## 7. Sell Rules (Option D - Trailing Stop)
 
-### 7.1 Primary Sell Trigger
-Sell the **entire position** when **both** conditions are true simultaneously:
-1. Closing price is **below the 9-month (189-day) SMA**
-2. Price has been continuously below the 9M SMA for **≥ 30 consecutive calendar days**
+### 7.1 Primary Sell Trigger - Trailing Stop
+Sell the **entire position** when:
+1. Current market value drops **≥ 20% below the position's peak market value**
+2. This condition persists for **≥ 3 consecutive trading days** (confirmation)
+
+```
+Peak MV = highest market value since position was opened
+Trailing stop = Peak MV × (1 - 0.20) = Peak MV × 0.80
+Sell when: current MV < trailing stop  for 3+ consecutive days
+```
+
+**Why trailing stop instead of 9M SMA:**
+- Lets winners like NVDA run for years without being stopped out on corrections
+- Cuts losers faster than waiting 30 days below SMA
+- Adapts to position size - a $500K position has a much higher stop than a $10K one
+- Avoids the whipsaw problem of stocks briefly dipping below SMA then recovering
 
 ### 7.2 Minimum Hold Period
-- Sell rule does **not** activate until **30 calendar days** after the first tranche purchase
+- Sell rule does **not** activate until **30 calendar days** after first buy
 - Prevents immediate stop-out on volatile entries
 
 ### 7.3 Tax Efficiency Flag
-- Positions held < 12 months at time of sell are flagged as "short-term" in the trade log
+- Positions held < 12 months flagged as "short-term" in trade log
 - Positions held ≥ 12 months flagged as "long-term"
-- This is informational only - not a hard trading rule
+- Informational only - not a hard trading rule
 
 ### 7.4 Post-Sell Cooldown
-- **30 calendar days** cooldown after selling before the stock can be re-bought
+- **30 calendar days** cooldown after selling before re-buying
 - Avoids wash-sale rule issues
-- During cooldown, stock is removed from the active watchlist
 
 ### 7.5 Re-entry After Sell
-- After cooldown expires, stock re-enters the watchlist
-- **Fresh $20K cap** for the new holding period
-- **Dip history fully reset** (no memory of previous dip lows)
-- Must re-qualify through the monthly universe screen
+- After cooldown: stock re-enters watchlist with **fresh caps and reset dip history**
+- Core holding layer will immediately re-buy if stock is above 9M SMA
 
 ---
 
 ## 8. Hold Rules
 
-- Hold while closing price ≥ 9-month (189-day) SMA
-- **No profit-taking rule** - let winners run
-- **No trimming** - position grows freely above $20K market value
-- **No rebalancing** - once in, hold until sell rule triggers
+- **No profit-taking rule** - let winners run freely
+- **No trimming** - position grows above 10% NAV cap (cap only limits new buys)
+- **No rebalancing** - hold until trailing stop fires
+- 9M SMA used only for: (1) core holding entry, (2) higher-low rule enforcement
 
 ---
 
@@ -203,26 +235,41 @@ to benchmark on the same dates as strategy injections.
 
 | Parameter | Value |
 |-----------|-------|
-| Full run | 15 years (or from 2010-01-01 to present) |
+| Full run | 15 years (2011 to present) |
 | Performance slices | 15yr, 10yr, 5yr, 1yr (from end date backward) |
 | Price data | Daily adjusted close (`PX_LAST`, split + dividend adjusted) |
-| SMA calculation | Simple moving average, 189 trading days |
+| SMA calculation | Simple moving average, 189 trading days (9 months) |
 | 52-week high | Rolling 252 trading-day maximum |
+| Trailing stop | 20% from peak market value, 3-day confirmation |
+| Core holding | 2% NAV per stock above 9M SMA, checked every 21 days |
 | Execution | End-of-day close price on signal date (no look-ahead) |
 | Transaction cost | Configurable via `--cost-bps` (default: 0) |
+| Data storage | Download once to disk; backtest runs from CSV files |
 
 ---
 
-## 11. Output Files
+## 11. File Structure
 
+### Downloaded Data (`moat_data/`)
 | File | Contents |
 |------|----------|
-| `moat_portfolio_daily.csv` | Daily NAV, cash, MM interest accrued, benchmark values |
-| `moat_trades.csv` | Every tranche buy/sell: date, ticker, action, dip%, shares, price, cost, P&L, hold days, tax flag |
-| `moat_positions.csv` | Current open positions: cost basis, market value, unrealized P&L, cycle #, tranches fired |
-| `moat_universe_monthly.csv` | Monthly universe snapshots with Option B and C scores |
-| `moat_report.txt` | Full performance report with 15/10/5/1yr slices |
-| `moat_chart.png` | 4-panel chart: NAV vs benchmarks, cumulative return, drawdown, # positions |
+| `prices.csv` | Daily adjusted close prices (all tickers + SMA warmup) |
+| `fundamentals.csv` | Option B + C screening fields as of download date |
+| `benchmark_rlusg.csv` | Russell 1000 Growth daily prices |
+| `benchmark_xndx.csv` | Nasdaq-100 TR daily prices |
+| `fedfunds.csv` | Fed Funds rate daily |
+| `universe.csv` | Full ticker list |
+| `manifest.json` | Download metadata (date, tickers, source) |
+
+### Backtest Results (`moat_results_b/` or `moat_results_c/`)
+| File | Contents |
+|------|----------|
+| `moat_portfolio_daily.csv` | Daily NAV, cash, invested, drawdown, benchmark values |
+| `moat_trades.csv` | Every trade: date, ticker, action, dip%, shares, price, P&L, hold days, tax flag |
+| `moat_positions.csv` | End-of-period open positions with unrealized P&L |
+| `moat_universe_scored.csv` | Scored + selected tickers with all screening metrics |
+| `moat_report.txt` | Full performance report (15/10/5/1yr vs RLUSG and XNDX) |
+| `moat_chart.png` | 4-panel chart: NAV, cumulative return, drawdown, # positions |
 
 ---
 
@@ -253,24 +300,48 @@ to benchmark on the same dates as strategy injections.
 | Decision | Rationale |
 |----------|-----------|
 | 52-week high as peak | Widely used, objective, avoids all-time-high recency bias |
-| Higher-low rule | Ensures we only buy dips within uptrends, not falling knives |
-| 9-month SMA (189-day) | Longer than 200-day to reduce whipsaws; captures major trend |
-| 30-day confirmation before sell | Avoids selling on brief volatility spikes below SMA |
+| % of NAV sizing (v2) | Position sizes grow with portfolio; avoids chronic underinvestment |
+| Core holding layer (v2) | Always invested in best uptrending stocks; closes gap vs buy-and-hold |
+| Relaxed higher-low rule (v2) | Uptrending stocks (above SMA) should always be bought on dips |
+| Trailing stop sell (v2) | Lets NVDA/AAPL-style winners run for years; cuts losers faster |
+| 9-month SMA (189-day) | Used for core entry signal and higher-low rule context |
+| 3-day trailing stop confirm | Avoids selling on single-day volatility spikes |
 | 30-day minimum hold | Prevents immediate stop-out on volatile entries |
 | 30-day cooldown after sell | Wash-sale rule compliance |
-| Cap resets per cycle | Allows compounding across multiple dip cycles in uptrending stocks |
+| Cap resets per cycle | Allows compounding across multiple dip cycles |
 | Option B primary screen | Directly measures moat strength (gross margin + ROE) + growth |
 | Option C secondary screen | Forward-looking analyst consensus as alternative signal |
-| RLUSG as primary benchmark | Most relevant peer: large-cap US growth, total return |
+| RLG/RLUSG as primary benchmark | Most relevant peer: large-cap US growth, total return |
+| Download-once architecture | Preserves Bloomberg API quota; enables instant parameter iteration |
 
 ---
 
-## 14. Open Items / Future Enhancements
+## 14. Usage Commands
+
+```powershell
+# Phase 1: Download all Bloomberg data once
+python run_moat.py --download --data-dir .\moat_data
+
+# Phase 2: Run backtest (no Bloomberg needed)
+python run_moat.py --backtest --data-dir .\moat_data --screen B
+python run_moat.py --backtest --data-dir .\moat_data --screen C
+
+# Tweak parameters freely - instant, zero Bloomberg quota
+python run_moat.py --backtest --data-dir .\moat_data --cost-bps 5
+python run_moat.py --backtest --data-dir .\moat_data --top-n 20
+python run_moat.py --backtest --data-dir .\moat_data --start 2015-01-01
+python run_moat.py --backtest --data-dir .\moat_data --no-chart
+```
+
+---
+
+## 15. Open Items / Future Enhancements
 
 - [ ] Test alternative peak definitions (all-time high, 6-month high)
-- [ ] Add position-level stop-loss (e.g., -60% from cost basis)
 - [ ] Test with transaction costs (5 bps, 10 bps)
 - [ ] Add sector concentration limits (e.g., max 30% in any one GICS sector)
-- [ ] Explore dividend reinvestment within positions
-- [ ] Test 6-month and 12-month SMA as alternative trend filters
+- [ ] Test 15% and 25% trailing stop variants
+- [ ] Test core allocation at 3% and 5% NAV
 - [ ] Add volatility filter (exclude stocks with 30-day realized vol > 60%)
+- [ ] Explore partial sell on trailing stop (sell 50%, hold remainder)
+- [ ] Add momentum score to universe ranking (12-1 month return)
