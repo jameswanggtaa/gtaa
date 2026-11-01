@@ -71,3 +71,13 @@ def option_limit(
             }
         ],
     }
+
+
+def short_call_credit(occ_symbol: str, qty: int, credit: float) -> dict[str, Any]:
+    """Sell-to-open a call for a limit credit (use bid for conservative fills)."""
+    return option_limit(occ_symbol, "SELL", qty, credit, open_position=True)
+
+
+def close_short_call_debit(occ_symbol: str, qty: int, debit: float) -> dict[str, Any]:
+    """Buy-to-close a short call for a limit debit (use ask for conservative fills)."""
+    return option_limit(occ_symbol, "BUY", qty, debit, open_position=False)

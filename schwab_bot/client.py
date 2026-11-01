@@ -66,17 +66,26 @@ class SchwabClient:
         self,
         symbol: str,
         contract_type: str = "ALL",
-        strike_count: int = 10,
+        strike_count: int = 20,
         include_underlying_quote: bool = True,
+        from_date: Optional[str] = None,
+        to_date: Optional[str] = None,
+        range_: str = "OTM",
     ) -> dict[str, Any]:
+        params: dict[str, Any] = {
+            "symbol": symbol,
+            "contractType": contract_type,
+            "strikeCount": strike_count,
+            "includeUnderlyingQuote": str(include_underlying_quote).lower(),
+            "range": range_,
+        }
+        if from_date:
+            params["fromDate"] = from_date
+        if to_date:
+            params["toDate"] = to_date
         response = requests.get(
             f"{MARKET_BASE}/chains",
-            params={
-                "symbol": symbol,
-                "contractType": contract_type,
-                "strikeCount": strike_count,
-                "includeUnderlyingQuote": str(include_underlying_quote).lower(),
-            },
+            params=params,
             headers=self.auth.headers(),
             timeout=30,
         )
